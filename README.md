@@ -65,3 +65,4 @@
 - `src/presenters/web.py`: Simple HTML presenter
 - `src/presenters/history.py`: HTML history presenter
 - `tests/test_app.py`: API and web UI tests
+- `tests/test_simulation.py`: calibrated replay simulation tests

@@ -94,6 +94,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - `/outcome` endpoint for recording realized outcomes.
 - `/learning` endpoint for reading the current learning summary.
 - `/simulate` endpoint for replaying historical market inputs without future leakage.
+- Replay mode calibrates threshold labels on the selected historical window and reports a baseline comparison.
 - Briefing input collector under `src/collectors/briefing_inputs.py`.
 - Top-level coordinator under `src/agents/chairman_ai.py`.
 - Risk review step under `src/agents/risk_ai.py`.
@@ -177,6 +178,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Keep the repo public-safe.
 - Default history and outcome files live outside the repository tree; env vars can override them.
 - Replay mode should not use future information. If archived news is unavailable, it should be reported as unavailable rather than guessed.
+- Replay calibration is allowed only inside the selected replay window and must be reported alongside the baseline result.
 - When changing payload shape, update docs and tests together.
 
 ## Verification

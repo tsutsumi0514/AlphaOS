@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any
-
-from ..briefing import derive_fx_state, derive_market_state
-from ..watchlist import derive_watch_status
 
 CHECK_WEIGHTS = {
     "market_state": 2.0,
@@ -15,13 +13,26 @@ CHECK_WEIGHTS = {
 }
 
 
+@dataclass(frozen=True)
+class ReplayThresholds:
+    market_move_pct: float = 0.7
+    fx_weak_yen: float = 155.0
+    fx_strong_yen: float = 145.0
+    watchlist_move_pct: float = 2.0
+
+
 def score_briefing_against_outcome(
-    briefing: Mapping[str, Any], outcome: Mapping[str, Any]
+    briefing: Mapping[str, Any],
+    outcome: Mapping[str, Any],
+    thresholds: ReplayThresholds | None = None,
 ) -> dict[str, Any]:
     """Score a briefing against actual market outcomes."""
     checks: list[dict[str, Any]] = []
+    thresholds = thresholds or ReplayThresholds()
 
-    market_actual = derive_market_state(outcome.get("market_change_pct"))
+    market_actual = _classify_market_state(
+        outcome.get("market_change_pct"), thresholds.market_move_pct
+    )
     market_predicted = briefing.get("market_state")
     _append_check(
         checks,
@@ -31,7 +42,9 @@ def score_briefing_against_outcome(
         CHECK_WEIGHTS["market_state"],
     )
 
-    fx_actual = derive_fx_state(outcome.get("usd_jpy"))
+    fx_actual = _classify_fx_state(
+        outcome.get("usd_jpy"), thresholds.fx_weak_yen, thresholds.fx_strong_yen
+    )
     fx_predicted = briefing.get("fx_state")
     _append_check(
         checks,
@@ -42,7 +55,9 @@ def score_briefing_against_outcome(
     )
 
     watchlist_checks = _score_watchlist(
-        briefing.get("watchlist_status"), outcome.get("watchlist_status")
+        briefing.get("watchlist_status"),
+        outcome.get("watchlist_status"),
+        thresholds.watchlist_move_pct,
     )
     checks.extend(watchlist_checks)
 
@@ -149,7 +164,9 @@ def _append_check(
 
 
 def _score_watchlist(
-    predicted_items: Any, actual_items: Any
+    predicted_items: Any,
+    actual_items: Any,
+    watchlist_move_pct: float,
 ) -> list[dict[str, Any]]:
     if not isinstance(predicted_items, list) or not isinstance(actual_items, list):
         return []
@@ -176,7 +193,11 @@ def _score_watchlist(
         actual_status = actual.get("status")
         if actual_status is None:
             change_pct = actual.get("change_pct")
-            actual_status = derive_watch_status(change_pct)
+            actual_status = _classify_watch_status(change_pct, watchlist_move_pct)
+        else:
+            change_pct = actual.get("change_pct")
+            if change_pct is not None:
+                actual_status = _classify_watch_status(change_pct, watchlist_move_pct)
 
         checks.append(
             {
@@ -189,3 +210,33 @@ def _score_watchlist(
         )
 
     return checks
+
+
+def _classify_market_state(market_change_pct: Any, threshold: float) -> str:
+    if market_change_pct is None:
+        return "unknown"
+    if market_change_pct >= threshold:
+        return "bullish"
+    if market_change_pct <= -threshold:
+        return "bearish"
+    return "neutral"
+
+
+def _classify_fx_state(usd_jpy: Any, weak_yen_threshold: float, strong_yen_threshold: float) -> str:
+    if usd_jpy is None:
+        return "unknown"
+    if usd_jpy >= weak_yen_threshold:
+        return "weak yen"
+    if usd_jpy <= strong_yen_threshold:
+        return "strong yen"
+    return "neutral"
+
+
+def _classify_watch_status(change_pct: Any, threshold: float) -> str:
+    if change_pct is None:
+        return "unknown"
+    if change_pct >= threshold:
+        return "strong"
+    if change_pct <= -threshold:
+        return "weak"
+    return "steady"

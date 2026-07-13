@@ -126,6 +126,7 @@ def get_learning():
 def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
     lookback = payload.get("lookback_trading_days", 20)
     symbols = payload.get("symbols")
+    calibrate = payload.get("calibrate", True)
 
     if not isinstance(lookback, int) or lookback < 1:
         lookback = 20
@@ -139,9 +140,13 @@ def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
     else:
         requested_symbols = ()
 
+    if not isinstance(calibrate, bool):
+        calibrate = True
+
     result = run_replay_simulation(
         lookback_trading_days=lookback,
         symbols=requested_symbols or (),
+        calibrate=calibrate,
     )
     if result["sample_size"] == 0:
         raise HTTPException(status_code=503, detail="insufficient historical data for replay")

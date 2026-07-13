@@ -50,4 +50,7 @@ def test_run_replay_simulation_scores_historical_pairs():
     assert result["mode"] == "replay"
     assert result["sample_size"] == 2
     assert result["summary"]["total"] == 2
+    assert result["calibration"]["enabled"] is True
+    assert result["calibration"]["summary"]["total"] == 2
+    assert result["baseline"]["summary"]["total"] == 2
     assert result["results"][0]["briefing"]["decision_ai"]["agent"] == "ChairmanAI"

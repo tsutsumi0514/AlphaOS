@@ -374,7 +374,7 @@ def test_backtest_endpoint_scores_payload():
 def test_simulate_endpoint_returns_result(monkeypatch):
     monkeypatch.setattr(
         "src.app.run_replay_simulation",
-        lambda lookback_trading_days, symbols: {
+        lambda lookback_trading_days, symbols, calibrate=True: {
             "mode": "replay",
             "sample_size": 2,
             "summary": {"total": 2, "accuracy": 1.0, "weighted_accuracy": 1.0},
