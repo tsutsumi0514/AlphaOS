@@ -24,3 +24,15 @@
 ## Project Structure
 - `src/` Application source code
 - `tests/` Automated tests
+
+## Setup
+- Install dependencies:
+  - `pip install -r requirements.txt`
+
+## Run
+- Start the app:
+  - `uvicorn src.app:app --reload`
+
+## Test
+- Run tests:
+  - `pytest`
