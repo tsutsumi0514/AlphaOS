@@ -15,17 +15,36 @@ def compose_briefing(source: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Build the briefing and let the risk agent own the risk view."""
     briefing = build_briefing(source)
     briefing["briefing_id"] = str(uuid4())
-    briefing["learning_summary"] = build_learning_summary()
+    learning_summary = build_learning_summary()
+    briefing["learning_summary"] = learning_summary
     briefing["risk_alerts"] = review_risk(briefing)
 
-    learning_summary = briefing.get("learning_summary")
-    if isinstance(learning_summary, dict) and learning_summary.get("status") == "weak":
-        notes = learning_summary.get("notes")
-        if isinstance(notes, list):
-            notes.append("Apply extra caution until accuracy improves.")
-        briefing["risk_alerts"] = [
-            *briefing.get("risk_alerts", []),
-            "Historical accuracy is weak. Use signals carefully.",
-        ]
+    _apply_learning_reflection(briefing, learning_summary)
 
     return briefing
+
+
+def _apply_learning_reflection(briefing: dict[str, Any], learning_summary: dict[str, Any]) -> None:
+    status = learning_summary.get("status")
+    if not isinstance(status, str):
+        return
+
+    note_by_status = {
+        "strong": "Recent learning is stable. Keep following the current signal mix.",
+        "moderate": "Recent learning is mixed. Keep position sizing conservative.",
+        "weak": "Recent learning is weak. Use signals with extra caution.",
+    }
+    note = note_by_status.get(status)
+    if not isinstance(note, str):
+        return
+
+    _append_unique(briefing.setdefault("key_changes", []), note)
+    _append_unique(briefing.setdefault("reasons", []), note)
+
+    if status == "weak":
+        _append_unique(briefing.setdefault("risk_alerts", []), note)
+
+
+def _append_unique(items: list[Any], value: str) -> None:
+    if value not in items:
+        items.append(value)

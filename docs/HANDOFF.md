@@ -41,8 +41,8 @@ Current collectors fetch external inputs:
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.
 - `src/storage/outcome_history.py` stores realized outcomes in JSONL under the user's home directory by default.
-- `src/learning/backtest.py` scores briefings against later outcomes and aggregates results.
-- `src/learning/feedback.py` summarizes recent learning performance for the next briefing.
+- `src/learning/backtest.py` scores briefings against later outcomes and aggregates weighted results.
+- `src/learning/feedback.py` summarizes recent learning performance for the next briefing and exposes period snapshots.
 
 ### Briefing Orchestration Layer
 - `src/briefing.py` merges signals into a compact briefing payload.
@@ -62,6 +62,7 @@ Current collectors fetch external inputs:
 - `src/app.py` exposes the `/briefing` endpoint.
 - `src/app.py` also exposes `/` as the simple Web presenter.
 - `src/app.py` also exposes `/history` and `/backtest` for learning loop review.
+- `src/app.py` also exposes `/history/view` as a simple Web review surface.
 - `src/app.py` also exposes `/outcome` and `/learning`.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
@@ -85,6 +86,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - FastAPI `/briefing` endpoint.
 - Simple HTML `/` presenter.
 - `/history` endpoint for stored briefing snapshots.
+- `/history/view` HTML page for browsing recent briefing snapshots.
 - `/backtest` endpoint for scoring a briefing set against outcomes.
 - `/outcome` endpoint for recording realized outcomes.
 - `/learning` endpoint for reading the current learning summary.
@@ -93,8 +95,8 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Risk review step under `src/agents/risk_ai.py`.
 - JSONL history storage under `src/storage/briefing_history.py`.
 - JSONL outcome storage under `src/storage/outcome_history.py`.
-- Minimal backtesting helpers under `src/learning/backtest.py`.
-- Learning summary helpers under `src/learning/feedback.py`.
+- Weighted backtesting helpers under `src/learning/backtest.py`.
+- Learning summary helpers with period snapshots under `src/learning/feedback.py`.
 - Automatic USD/JPY fetching.
 - Automatic Nikkei change fetching.
 - Automatic watchlist fetching for multiple symbols.
@@ -150,6 +152,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Add learning loop.
 - Preserve predictions, results, and scores.
 - Support backtesting and refinement.
+- Keep the review surface simple with Web history browsing.
 
 ## Priority Order
 1. Keep the current v1 briefing stable.

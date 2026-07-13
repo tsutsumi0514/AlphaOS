@@ -1,0 +1,295 @@
+"""HTML history presenter for AlphaOS briefing snapshots."""
+
+from __future__ import annotations
+
+from html import escape
+from typing import Any, Mapping
+
+from fastapi.responses import HTMLResponse
+
+
+def render_history_page(
+    records: list[dict[str, Any]],
+    learning_summary: Mapping[str, Any] | None = None,
+) -> HTMLResponse:
+    return HTMLResponse(_render_page(records, learning_summary))
+
+
+def _render_page(
+    records: list[dict[str, Any]],
+    learning_summary: Mapping[str, Any] | None,
+) -> str:
+    total = len(records)
+    status = _text(learning_summary.get("status"), "insufficient") if isinstance(learning_summary, Mapping) else "insufficient"
+    sample_size = learning_summary.get("sample_size", 0) if isinstance(learning_summary, Mapping) else 0
+    accuracy = learning_summary.get("accuracy") if isinstance(learning_summary, Mapping) else None
+    accuracy_text = "n/a" if accuracy is None else f"{float(accuracy) * 100:.0f}%"
+
+    recent_records = list(reversed(records[-10:]))
+    cards = "".join(_render_record_card(record) for record in recent_records)
+    if not cards:
+        cards = "<p class='empty'>No briefing history yet.</p>"
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AlphaOS Briefing History</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --bg: #eef3f8;
+      --panel: #ffffff;
+      --ink: #1f2a37;
+      --muted: #5f6b7a;
+      --accent: #2457d6;
+      --accent-soft: rgba(36, 87, 214, 0.12);
+      --border: rgba(31, 42, 55, 0.12);
+      --shadow: 0 20px 60px rgba(31, 42, 55, 0.12);
+    }}
+    body {{
+      margin: 0;
+      font-family: "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top right, rgba(36, 87, 214, 0.16), transparent 30%),
+        linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }}
+    main {{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 48px;
+    }}
+    .shell {{
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }}
+    header {{
+      padding: 28px 28px 0;
+    }}
+    .eyebrow {{
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      font-size: 12px;
+      color: var(--accent);
+      margin: 0 0 10px;
+    }}
+    h1 {{
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.05;
+    }}
+    .subhead {{
+      margin: 12px 0 0;
+      color: var(--muted);
+      max-width: 72ch;
+    }}
+    .summary {{
+      padding: 22px 28px 8px;
+      display: grid;
+      gap: 12px;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }}
+    .card {{
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--panel);
+      padding: 16px;
+    }}
+    .card h2 {{
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }}
+    .card .value {{
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.1;
+    }}
+    .record-list {{
+      padding: 12px 28px 28px;
+      display: grid;
+      gap: 14px;
+    }}
+    .record {{
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: linear-gradient(180deg, #fff 0%, #f9fbff 100%);
+      padding: 18px;
+    }}
+    .record-head {{
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+    }}
+    .record h2 {{
+      margin: 0;
+      font-size: 18px;
+    }}
+    .meta {{
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }}
+    .chips {{
+      margin-top: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }}
+    .chip {{
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--accent-soft);
+      color: var(--ink);
+      padding: 6px 12px;
+      font-size: 13px;
+    }}
+    .section {{
+      margin-top: 14px;
+    }}
+    .section h3 {{
+      margin: 0 0 8px;
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }}
+    ul {{
+      margin: 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 6px;
+    }}
+    .empty {{
+      color: var(--muted);
+      margin: 0;
+    }}
+    footer {{
+      padding: 0 28px 28px;
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }}
+    a {{
+      color: var(--accent);
+      text-decoration: none;
+    }}
+    @media (max-width: 640px) {{
+      header, .summary, .record-list, footer {{
+        padding-left: 18px;
+        padding-right: 18px;
+      }}
+    }}
+  </style>
+</head>
+<body>
+  <main>
+    <div class="shell">
+      <header>
+        <p class="eyebrow">AlphaOS Briefing Archive</p>
+        <h1>Review recent briefings without leaving the web UI.</h1>
+        <p class="subhead">This view keeps the history surface simple while preserving the stored briefing payloads for later learning and backtesting.</p>
+      </header>
+      <div class="summary">
+        <div class="grid">
+          <div class="card"><h2>Records</h2><div class="value">{escape(str(total))}</div></div>
+          <div class="card"><h2>Learning</h2><div class="value">{escape(status)}</div></div>
+          <div class="card"><h2>Sample</h2><div class="value">{escape(str(sample_size))}</div></div>
+          <div class="card"><h2>Accuracy</h2><div class="value">{escape(accuracy_text)}</div></div>
+        </div>
+      </div>
+      <div class="record-list">
+        {cards}
+      </div>
+      <footer>
+        <span>Latest 10 entries are shown first.</span>
+        <span><a href="/">Back to briefing</a></span>
+      </footer>
+    </div>
+  </main>
+</body>
+</html>"""
+
+
+def _render_record_card(record: Mapping[str, Any]) -> str:
+    recorded_at = _text(record.get("recorded_at"), "unknown")
+    briefing_id = _text(record.get("briefing_id"), "unknown")
+    briefing = record.get("briefing")
+    briefing_map = briefing if isinstance(briefing, Mapping) else {}
+
+    headline = _text(briefing_map.get("headline"), "Market overview is not ready yet.")
+    market_state = _text(briefing_map.get("market_state"), "unknown")
+    fx_state = _text(briefing_map.get("fx_state"), "unknown")
+    confidence = _text(briefing_map.get("confidence"), "low")
+
+    risk_alerts = _list_items(briefing_map.get("risk_alerts"))
+    key_changes = _list_items(briefing_map.get("key_changes"))
+    reasons = _list_items(briefing_map.get("reasons"))
+
+    return f"""
+      <article class="record">
+        <div class="record-head">
+          <div>
+            <h2>{escape(headline)}</h2>
+            <div class="meta">
+              <span>{escape(recorded_at)}</span>
+              <span>Briefing {escape(briefing_id)}</span>
+            </div>
+          </div>
+          <div class="chips">
+            <span class="chip">Market: {escape(market_state)}</span>
+            <span class="chip">FX: {escape(fx_state)}</span>
+            <span class="chip">Confidence: {escape(confidence)}</span>
+          </div>
+        </div>
+        {_render_item_section("Risk alerts", risk_alerts)}
+        {_render_item_section("Key changes", key_changes)}
+        {_render_item_section("Reasons", reasons)}
+      </article>
+    """
+
+
+def _render_item_section(title: str, value: Any) -> str:
+    items = _list_items(value)
+    if not items:
+        return f"<div class='section'><h3>{escape(title)}</h3><p class='empty'>None</p></div>"
+
+    return (
+        f"<div class='section'><h3>{escape(title)}</h3><ul>"
+        + "".join(f"<li>{escape(_text(item, ''))}</li>" for item in items[:3])
+        + "</ul></div>"
+    )
+
+
+def _list_items(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    return []
+
+
+def _text(value: Any, default: str) -> str:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    if value is None:
+        return default
+    return str(value)

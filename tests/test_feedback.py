@@ -29,6 +29,8 @@ def test_build_learning_summary_reports_strong_accuracy():
     assert summary["sample_size"] == 1
     assert summary["accuracy"] == 1.0
     assert "stable" in summary["notes"][0]
+    assert summary["periods"]["all"]["weighted_accuracy"] == 1.0
+    assert "recent_5" in summary["periods"]
 
 
 def test_build_learning_summary_reports_insufficient_when_no_matches():
@@ -37,3 +39,4 @@ def test_build_learning_summary_reports_insufficient_when_no_matches():
     assert summary["status"] == "insufficient"
     assert summary["sample_size"] == 0
     assert summary["accuracy"] is None
+    assert summary["periods"]["all"]["total"] == 0

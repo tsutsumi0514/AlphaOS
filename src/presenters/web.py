@@ -148,6 +148,14 @@ def _render_page(briefing: Mapping[str, Any]) -> str:
       padding: 0 28px 28px;
       color: var(--muted);
       font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }}
+    a {{
+      color: var(--accent);
+      text-decoration: none;
     }}
     @media (max-width: 640px) {{
       header, .hero, .grid, footer {{
@@ -180,7 +188,10 @@ def _render_page(briefing: Mapping[str, Any]) -> str:
         { _render_learning_section(briefing.get("learning_summary")) }
         { _render_evidence_section(briefing.get("evidence")) }
       </div>
-      <footer>Final decision remains with the human.</footer>
+      <footer>
+        <span>Final decision remains with the human.</span>
+        <span><a href="/history/view">Review history</a></span>
+      </footer>
     </div>
   </main>
 </body>

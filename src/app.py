@@ -10,6 +10,7 @@ from .learning.feedback import build_learning_summary
 from .storage.briefing_history import record_briefing_snapshot
 from .storage.briefing_history import load_briefing_history
 from .storage.outcome_history import record_market_outcome
+from .presenters.history import render_history_page
 from .presenters.web import render_homepage
 
 app = FastAPI(title="AlphaOS")
@@ -65,6 +66,14 @@ def get_history(limit: int = Query(default=20, ge=1, le=200)):
     records = load_briefing_history()
     recent_records = records[-limit:]
     return {"count": len(records), "records": recent_records}
+
+
+@app.get("/history/view", response_class=HTMLResponse)
+def get_history_view(limit: int = Query(default=10, ge=1, le=200)):
+    records = load_briefing_history()
+    recent_records = records[-limit:]
+    learning_summary = build_learning_summary()
+    return render_history_page(recent_records, learning_summary)
 
 
 @app.post("/backtest")

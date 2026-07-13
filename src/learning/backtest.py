@@ -8,6 +8,12 @@ from typing import Any
 from ..briefing import derive_fx_state, derive_market_state
 from ..watchlist import derive_watch_status
 
+CHECK_WEIGHTS = {
+    "market_state": 2.0,
+    "fx_state": 2.0,
+    "watchlist": 1.0,
+}
+
 
 def score_briefing_against_outcome(
     briefing: Mapping[str, Any], outcome: Mapping[str, Any]
@@ -17,11 +23,23 @@ def score_briefing_against_outcome(
 
     market_actual = derive_market_state(outcome.get("market_change_pct"))
     market_predicted = briefing.get("market_state")
-    _append_check(checks, "market_state", market_predicted, market_actual)
+    _append_check(
+        checks,
+        "market_state",
+        market_predicted,
+        market_actual,
+        CHECK_WEIGHTS["market_state"],
+    )
 
     fx_actual = derive_fx_state(outcome.get("usd_jpy"))
     fx_predicted = briefing.get("fx_state")
-    _append_check(checks, "fx_state", fx_predicted, fx_actual)
+    _append_check(
+        checks,
+        "fx_state",
+        fx_predicted,
+        fx_actual,
+        CHECK_WEIGHTS["fx_state"],
+    )
 
     watchlist_checks = _score_watchlist(
         briefing.get("watchlist_status"), outcome.get("watchlist_status")
@@ -31,11 +49,17 @@ def score_briefing_against_outcome(
     matched = sum(1 for check in checks if check["matched"])
     total = len(checks)
     accuracy = matched / total if total else 0.0
+    weighted_matched = sum(check["weight"] for check in checks if check["matched"])
+    weighted_total = sum(check["weight"] for check in checks)
+    weighted_accuracy = weighted_matched / weighted_total if weighted_total else 0.0
 
     return {
         "matched": matched,
         "total": total,
         "accuracy": accuracy,
+        "weighted_matched": weighted_matched,
+        "weighted_total": weighted_total,
+        "weighted_accuracy": weighted_accuracy,
         "checks": checks,
     }
 
@@ -75,23 +99,43 @@ def summarize_backtest(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Aggregate backtest results into a compact summary."""
     total = len(results)
     if total == 0:
-        return {"total": 0, "matched": 0, "accuracy": 0.0}
+        return {
+            "total": 0,
+            "matched": 0,
+            "accuracy": 0.0,
+            "weighted_matched": 0.0,
+            "weighted_total": 0.0,
+            "weighted_accuracy": 0.0,
+        }
 
     matched = 0
     checks = 0
+    weighted_matched = 0.0
+    weighted_total = 0.0
     for result in results:
         payload = result.get("result")
         if not isinstance(payload, Mapping):
             continue
         matched += int(payload.get("matched", 0))
         checks += int(payload.get("total", 0))
+        weighted_matched += float(payload.get("weighted_matched", payload.get("matched", 0)))
+        weighted_total += float(payload.get("weighted_total", payload.get("total", 0)))
 
     accuracy = matched / checks if checks else 0.0
-    return {"total": total, "matched": matched, "checks": checks, "accuracy": accuracy}
+    weighted_accuracy = weighted_matched / weighted_total if weighted_total else 0.0
+    return {
+        "total": total,
+        "matched": matched,
+        "checks": checks,
+        "accuracy": accuracy,
+        "weighted_matched": weighted_matched,
+        "weighted_total": weighted_total,
+        "weighted_accuracy": weighted_accuracy,
+    }
 
 
 def _append_check(
-    checks: list[dict[str, Any]], label: str, predicted: Any, actual: Any
+    checks: list[dict[str, Any]], label: str, predicted: Any, actual: Any, weight: float
 ) -> None:
     checks.append(
         {
@@ -99,6 +143,7 @@ def _append_check(
             "predicted": predicted,
             "actual": actual,
             "matched": predicted == actual,
+            "weight": weight,
         }
     )
 
@@ -139,6 +184,7 @@ def _score_watchlist(
                 "predicted": predicted_status,
                 "actual": actual_status,
                 "matched": predicted_status == actual_status,
+                "weight": CHECK_WEIGHTS["watchlist"],
             }
         )
 

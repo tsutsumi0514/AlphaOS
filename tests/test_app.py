@@ -207,6 +207,7 @@ def test_homepage_returns_html_briefing():
     assert "Evidence" in response.text
     assert "Learning" in response.text
     assert "Confidence" in response.text
+    assert "Review history" in response.text
 
 
 def test_homepage_survives_fetch_failures(monkeypatch):
@@ -246,6 +247,47 @@ def test_history_endpoint_returns_recent_records(monkeypatch):
     assert data["records"][0]["briefing_id"] == "two"
 
 
+def test_history_view_returns_html(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.load_briefing_history",
+        lambda: [
+            {
+                "briefing_id": "one",
+                "recorded_at": "2026-07-14T00:00:00Z",
+                "briefing": {
+                    "headline": "alpha",
+                    "market_state": "bullish",
+                    "fx_state": "weak yen",
+                    "confidence": "high",
+                    "risk_alerts": ["risk"],
+                    "key_changes": ["change"],
+                    "reasons": ["reason"],
+                },
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "src.app.build_learning_summary",
+        lambda: {
+            "status": "strong",
+            "sample_size": 1,
+            "accuracy": 1.0,
+            "weighted_accuracy": 1.0,
+            "notes": ["Recent forecast accuracy is stable."],
+            "periods": {"all": {"total": 1}},
+        },
+    )
+
+    response = client.get("/history/view")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AlphaOS Briefing Archive" in response.text
+    assert "Review history" not in response.text
+    assert "Back to briefing" in response.text
+    assert "alpha" in response.text
+
+
 def test_outcome_endpoint_records_result(monkeypatch):
     monkeypatch.setattr("src.app.record_market_outcome", lambda briefing_id, outcome: {"briefing_id": briefing_id, "outcome": outcome})
     monkeypatch.setattr(
@@ -274,7 +316,14 @@ def test_outcome_endpoint_records_result(monkeypatch):
 def test_learning_endpoint_returns_summary(monkeypatch):
     monkeypatch.setattr(
         "src.app.build_learning_summary",
-        lambda: {"status": "moderate", "sample_size": 3, "accuracy": 0.67, "notes": ["Recent forecast accuracy is mixed."]},
+        lambda: {
+            "status": "moderate",
+            "sample_size": 3,
+            "accuracy": 0.67,
+            "weighted_accuracy": 0.67,
+            "notes": ["Recent forecast accuracy is mixed."],
+            "periods": {"all": {"total": 3}},
+        },
     )
 
     response = client.get("/learning")
@@ -283,6 +332,7 @@ def test_learning_endpoint_returns_summary(monkeypatch):
     data = response.json()
     assert data["status"] == "moderate"
     assert data["sample_size"] == 3
+    assert "periods" in data
 
 
 def test_backtest_endpoint_scores_payload():

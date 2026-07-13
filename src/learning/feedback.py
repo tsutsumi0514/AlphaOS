@@ -9,6 +9,8 @@ from .backtest import backtest_history, summarize_backtest
 from ..storage.briefing_history import load_briefing_history
 from ..storage.outcome_history import load_market_outcomes
 
+PERIOD_WINDOWS = (5, 20)
+
 
 def build_learning_summary(
     history: list[dict[str, Any]] | None = None,
@@ -29,16 +31,19 @@ def build_learning_summary(
 
     results = backtest_history(history, outcomes_by_id)
     summary = summarize_backtest(results)
+    periods = _build_period_summaries(results)
 
     sample_size = int(summary.get("total", 0))
-    accuracy = summary.get("accuracy")
+    accuracy = summary.get("weighted_accuracy", summary.get("accuracy"))
 
     if sample_size == 0:
         return {
             "status": "insufficient",
             "sample_size": 0,
             "accuracy": None,
+            "weighted_accuracy": None,
             "notes": ["No matched outcomes yet."],
+            "periods": periods,
         }
 
     if isinstance(accuracy, (int, float)) and accuracy < 0.5:
@@ -55,6 +60,20 @@ def build_learning_summary(
         "status": status,
         "sample_size": sample_size,
         "accuracy": accuracy,
+        "weighted_accuracy": summary.get("weighted_accuracy"),
         "notes": notes,
         "summary": summary,
+        "periods": periods,
     }
+
+
+def _build_period_summaries(
+    results: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    periods: dict[str, dict[str, Any]] = {}
+    periods["all"] = summarize_backtest(results)
+
+    for window in PERIOD_WINDOWS:
+        periods[f"recent_{window}"] = summarize_backtest(results[-window:])
+
+    return periods
