@@ -50,3 +50,45 @@ def test_briefing_endpoint_uses_fetched_market_change_pct(monkeypatch):
     assert response.status_code == 200
     data = response.json()
     assert data["market_state"] == "bearish"
+
+
+def test_briefing_endpoint_uses_fetched_watchlist_status(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.fetch_watchlist_status",
+        lambda symbol: [
+            {
+                "symbol": symbol,
+                "price": 2810.0,
+                "change_pct": 2.4,
+                "status": "strong",
+            }
+        ],
+    )
+
+    response = client.get("/briefing")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["watchlist_status"][0]["symbol"] == "7203.T"
+    assert data["watchlist_status"][0]["status"] == "strong"
+
+
+def test_briefing_endpoint_accepts_watchlist_symbol(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.fetch_watchlist_status",
+        lambda symbol: [
+            {
+                "symbol": symbol,
+                "price": 9800.0,
+                "change_pct": -2.1,
+                "status": "weak",
+            }
+        ],
+    )
+
+    response = client.get("/briefing?watchlist_symbol=9984.T")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["watchlist_status"][0]["symbol"] == "9984.T"
+    assert data["watchlist_status"][0]["status"] == "weak"
