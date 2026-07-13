@@ -1,16 +1,13 @@
-def build_briefing():
+from fastapi import FastAPI
+
+app = FastAPI(title="AlphaOS")
+
+
+@app.get("/briefing")
+def get_briefing():
     return {
         "market_state": "unknown",
         "watchlist_status": [],
         "risk_alerts": [],
         "key_changes": [],
     }
-
-
-def main():
-    briefing = build_briefing()
-    print(briefing)
-
-
-if __name__ == "__main__":
-    main()
