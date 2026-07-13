@@ -7,6 +7,8 @@ def test_compose_briefing_overrides_risk_alerts(monkeypatch):
         lambda source: {
             "headline": "headline",
             "risk_alerts": ["old-risk"],
+            "key_changes": [],
+            "reasons": [],
             "evidence": [],
         },
     )
@@ -14,11 +16,24 @@ def test_compose_briefing_overrides_risk_alerts(monkeypatch):
         "src.agents.chairman_ai.review_risk",
         lambda briefing: ["new-risk"],
     )
+    monkeypatch.setattr(
+        "src.agents.chairman_ai.build_learning_summary",
+        lambda: {
+            "status": "insufficient",
+            "sample_size": 0,
+            "accuracy": None,
+            "weighted_accuracy": None,
+            "notes": ["No matched outcomes yet."],
+            "periods": {"all": {"total": 0}},
+        },
+    )
 
     briefing = compose_briefing({"market_state": "bullish"})
 
     assert briefing["risk_alerts"] == ["new-risk"]
     assert briefing["headline"] == "headline"
+    assert "decision_ai" in briefing
+    assert len(briefing["decision_ai"]["views"]) == 5
 
 
 def test_compose_briefing_reflects_learning_summary(monkeypatch):

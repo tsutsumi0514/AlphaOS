@@ -8,18 +8,27 @@ from typing import Any
 
 from ..briefing import build_briefing
 from ..learning.feedback import build_learning_summary
+from .decision_ai import build_decision_ai
 from .risk_ai import review_risk
 
 
-def compose_briefing(source: Mapping[str, Any] | None = None) -> dict[str, Any]:
+def compose_briefing(
+    source: Mapping[str, Any] | None = None,
+    learning_summary: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Build the briefing and let the risk agent own the risk view."""
     briefing = build_briefing(source)
     briefing["briefing_id"] = str(uuid4())
-    learning_summary = build_learning_summary()
+    if learning_summary is None:
+        learning_summary = build_learning_summary()
+    else:
+        learning_summary = dict(learning_summary)
+
     briefing["learning_summary"] = learning_summary
     briefing["risk_alerts"] = review_risk(briefing)
 
     _apply_learning_reflection(briefing, learning_summary)
+    briefing["decision_ai"] = build_decision_ai(briefing)
 
     return briefing
 

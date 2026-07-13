@@ -7,6 +7,7 @@ from .agents.chairman_ai import compose_briefing
 from .collectors.briefing_inputs import collect_briefing_source
 from .learning.backtest import backtest_history, summarize_backtest
 from .learning.feedback import build_learning_summary
+from .simulation.replay import run_replay_simulation
 from .storage.briefing_history import record_briefing_snapshot
 from .storage.briefing_history import load_briefing_history
 from .storage.outcome_history import record_market_outcome
@@ -119,3 +120,29 @@ def post_outcome(payload: dict[str, object] = Body(default_factory=dict)):
 @app.get("/learning")
 def get_learning():
     return build_learning_summary()
+
+
+@app.post("/simulate")
+def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
+    lookback = payload.get("lookback_trading_days", 20)
+    symbols = payload.get("symbols")
+
+    if not isinstance(lookback, int) or lookback < 1:
+        lookback = 20
+
+    if isinstance(symbols, list):
+        requested_symbols = tuple(
+            symbol.strip() for symbol in symbols if isinstance(symbol, str) and symbol.strip()
+        )
+        if not requested_symbols:
+            requested_symbols = ()
+    else:
+        requested_symbols = ()
+
+    result = run_replay_simulation(
+        lookback_trading_days=lookback,
+        symbols=requested_symbols or (),
+    )
+    if result["sample_size"] == 0:
+        raise HTTPException(status_code=503, detail="insufficient historical data for replay")
+    return result

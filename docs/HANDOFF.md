@@ -37,6 +37,8 @@ Current collectors fetch external inputs:
 ### Agent Layer
 - `src/agents/chairman_ai.py` coordinates the top-level briefing assembly.
 - `src/agents/risk_ai.py` owns the risk review step.
+- `src/agents/macro_ai.py`, `src/agents/news_ai.py`, `src/agents/technical_ai.py`, and `src/agents/company_ai.py` provide the V4 subviews.
+- `src/agents/decision_ai.py` synthesizes those views into one decision support block.
 
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.
@@ -64,6 +66,7 @@ Current collectors fetch external inputs:
 - `src/app.py` also exposes `/history` and `/backtest` for learning loop review.
 - `src/app.py` also exposes `/history/view` as a simple Web review surface.
 - `src/app.py` also exposes `/outcome` and `/learning`.
+- `src/app.py` also exposes `/simulate` for historical replay.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 
@@ -90,6 +93,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - `/backtest` endpoint for scoring a briefing set against outcomes.
 - `/outcome` endpoint for recording realized outcomes.
 - `/learning` endpoint for reading the current learning summary.
+- `/simulate` endpoint for replaying historical market inputs without future leakage.
 - Briefing input collector under `src/collectors/briefing_inputs.py`.
 - Top-level coordinator under `src/agents/chairman_ai.py`.
 - Risk review step under `src/agents/risk_ai.py`.
@@ -97,6 +101,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - JSONL outcome storage under `src/storage/outcome_history.py`.
 - Weighted backtesting helpers under `src/learning/backtest.py`.
 - Learning summary helpers with period snapshots under `src/learning/feedback.py`.
+- Historical replay helpers under `src/simulation/replay.py`.
 - Automatic USD/JPY fetching.
 - Automatic Nikkei change fetching.
 - Automatic watchlist fetching for multiple symbols.
@@ -118,7 +123,6 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Voice or wearable presenters.
 - User-specific rule settings.
 - Multi-user support.
-- Real `ChairmanAI`, `RiskAI`, `NewsAI`, or `MacroAI` modules.
 
 ## Important Decisions
 - The project is a decision-support OS, not an auto-trading system.
@@ -154,6 +158,11 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Support backtesting and refinement.
 - Keep the review surface simple with Web history browsing.
 
+### v4
+- Add Decision AI with MacroAI, NewsAI, TechnicalAI, CompanyAI, RiskAI, and ChairmanAI synthesis.
+- Support historical replay against archived market inputs.
+- Keep the final decision human-facing and compact.
+
 ## Priority Order
 1. Keep the current v1 briefing stable.
 2. Expand evidence and risk logic carefully.
@@ -167,6 +176,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Do not introduce secrets, API keys, or personal tokens.
 - Keep the repo public-safe.
 - Default history and outcome files live outside the repository tree; env vars can override them.
+- Replay mode should not use future information. If archived news is unavailable, it should be reported as unavailable rather than guessed.
 - When changing payload shape, update docs and tests together.
 
 ## Verification

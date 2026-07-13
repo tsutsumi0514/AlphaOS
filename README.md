@@ -45,15 +45,22 @@
 - `src/app.py`: FastAPI entrypoint for `/` and `/briefing`
 - `src/app.py`: history, history view, and backtest API endpoints
 - `src/app.py`: outcome and learning API endpoints
+- `src/app.py`: replay simulation API endpoint
 - `src/collectors/briefing_inputs.py`: briefing input collection
 - `src/agents/chairman_ai.py`: briefing orchestration
 - `src/agents/risk_ai.py`: risk review step
+- `src/agents/macro_ai.py`: macro perspective for V4
+- `src/agents/news_ai.py`: news perspective for V4
+- `src/agents/technical_ai.py`: technical perspective for V4
+- `src/agents/company_ai.py`: company perspective for V4
+- `src/agents/decision_ai.py`: V4 decision synthesis
 - `src/briefing.py`: Briefing data builder
 - `src/analyzers/briefing_signals.py`: Risk and evidence helpers
 - `src/storage/briefing_history.py`: JSONL briefing history
 - `src/storage/outcome_history.py`: JSONL outcome history
 - `src/learning/backtest.py`: Simple scoring and weighted backtest helpers
 - `src/learning/feedback.py`: Learning summary helpers with period snapshots
+- `src/simulation/replay.py`: Historical replay and simulation helpers
 - `src/evidence.py`: Structured evidence objects
 - `src/presenters/web.py`: Simple HTML presenter
 - `src/presenters/history.py`: HTML history presenter

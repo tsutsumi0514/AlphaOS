@@ -182,6 +182,7 @@ def _render_page(briefing: Mapping[str, Any]) -> str:
         </div>
       </div>
       <div class="grid">
+        { _render_decision_section(briefing.get("decision_ai")) }
         { _render_section("Risk Alerts", briefing.get("risk_alerts")) }
         { _render_section("Key Changes", briefing.get("key_changes")) }
         { _render_section("Reasons", briefing.get("reasons")) }
@@ -232,6 +233,36 @@ def _render_evidence_section(value: Any) -> str:
             rendered_items.append(f"<li>{escape(str(item))}</li>")
 
     return "<section><h2>Evidence</h2><ul>" + "".join(rendered_items) + "</ul></section>"
+
+
+def _render_decision_section(value: Any) -> str:
+    if not isinstance(value, Mapping):
+        return "<section><h2>Decision AI</h2><p class='empty'>None</p></section>"
+
+    stance = _text(value.get("stance"), "balanced")
+    summary = _text(value.get("summary"), "No decision summary available.")
+    views = value.get("views")
+    rendered_views: list[str] = []
+    if isinstance(views, list):
+        for view in views[:5]:
+            if isinstance(view, Mapping):
+                agent = _text(view.get("agent"), "Agent")
+                view_stance = _text(view.get("stance"), "balanced")
+                view_summary = _text(view.get("summary"), "")
+                rendered_views.append(
+                    f"<li><strong>{escape(agent)}</strong> ({escape(view_stance)}): {escape(view_summary)}</li>"
+                )
+
+    if not rendered_views:
+        rendered_views.append("<li class='empty'>None</li>")
+
+    return (
+        "<section><h2>Decision AI</h2>"
+        f"<p class='empty'>consensus: {escape(stance)}. {escape(summary)}</p>"
+        "<ul>"
+        + "".join(rendered_views)
+        + "</ul></section>"
+    )
 
 
 def _render_learning_section(value: Any) -> str:

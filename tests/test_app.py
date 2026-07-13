@@ -59,6 +59,7 @@ def test_briefing_endpoint_returns_expected_keys():
     assert "confidence" in data
     assert "briefing_id" in data
     assert "learning_summary" in data
+    assert "decision_ai" in data
 
 
 def test_briefing_endpoint_derives_fx_state_from_usd_jpy():
@@ -205,6 +206,7 @@ def test_homepage_returns_html_briefing():
     assert "Risk Alerts" in response.text
     assert "Reasons" in response.text
     assert "Evidence" in response.text
+    assert "Decision AI" in response.text
     assert "Learning" in response.text
     assert "Confidence" in response.text
     assert "Review history" in response.text
@@ -367,3 +369,26 @@ def test_backtest_endpoint_scores_payload():
     data = response.json()
     assert data["summary"]["accuracy"] == 1.0
     assert data["results"][0]["briefing_id"] == "alpha"
+
+
+def test_simulate_endpoint_returns_result(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.run_replay_simulation",
+        lambda lookback_trading_days, symbols: {
+            "mode": "replay",
+            "sample_size": 2,
+            "summary": {"total": 2, "accuracy": 1.0, "weighted_accuracy": 1.0},
+            "results": [
+                {"briefing_date": "2026-07-10", "outcome_date": "2026-07-11", "result": {"accuracy": 1.0}},
+                {"briefing_date": "2026-07-11", "outcome_date": "2026-07-12", "result": {"accuracy": 1.0}},
+            ],
+            "notes": ["ok"],
+        },
+    )
+
+    response = client.post("/simulate", json={"lookback_trading_days": 2})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "replay"
+    assert data["sample_size"] == 2
