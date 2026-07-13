@@ -36,3 +36,7 @@
 ## Test
 - Run tests:
   - `pytest`
+## Current Implementation
+- `src/app.py`: FastAPI entrypoint
+- `src/briefing.py`: Briefing data builder
+- `tests/test_app.py`: API test
