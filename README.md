@@ -40,3 +40,7 @@
 - `src/app.py`: FastAPI entrypoint
 - `src/briefing.py`: Briefing data builder
 - `tests/test_app.py`: API test
+
+## Run
+- Start the app:
+  - `python -m src.main`
