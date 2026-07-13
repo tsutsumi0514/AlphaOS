@@ -214,3 +214,55 @@ def test_homepage_survives_fetch_failures(monkeypatch):
     assert response.status_code == 200
     assert "Market overview is not ready yet." in response.text
     assert "None" in response.text
+
+
+def test_history_endpoint_returns_recent_records(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.load_briefing_history",
+        lambda: [
+            {"briefing_id": "one", "recorded_at": "2026-07-14T00:00:00Z"},
+            {"briefing_id": "two", "recorded_at": "2026-07-14T01:00:00Z"},
+        ],
+    )
+
+    response = client.get("/history?limit=1")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    assert len(data["records"]) == 1
+    assert data["records"][0]["briefing_id"] == "two"
+
+
+def test_backtest_endpoint_scores_payload():
+    response = client.post(
+        "/backtest",
+        json={
+            "history": [
+                {
+                    "briefing_id": "alpha",
+                    "briefing": {
+                        "market_state": "bullish",
+                        "fx_state": "weak yen",
+                        "watchlist_status": [
+                            {"symbol": "7203.T", "status": "strong"}
+                        ],
+                    },
+                }
+            ],
+            "outcomes": {
+                "alpha": {
+                    "market_change_pct": 1.2,
+                    "usd_jpy": 156.2,
+                    "watchlist_status": [
+                        {"symbol": "7203.T", "change_pct": 2.4}
+                    ],
+                }
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["summary"]["accuracy"] == 1.0
+    assert data["results"][0]["briefing_id"] == "alpha"

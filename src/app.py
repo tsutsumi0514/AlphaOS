@@ -1,9 +1,11 @@
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Query
 from fastapi.responses import HTMLResponse
 
 from .agents.chairman_ai import compose_briefing
 from .collectors.briefing_inputs import collect_briefing_source
+from .learning.backtest import backtest_history, summarize_backtest
 from .storage.briefing_history import record_briefing_snapshot
+from .storage.briefing_history import load_briefing_history
 from .presenters.web import render_homepage
 
 app = FastAPI(title="AlphaOS")
@@ -51,3 +53,24 @@ def get_homepage(
     )
     briefing = compose_briefing(source)
     return render_homepage(briefing)
+
+
+@app.get("/history")
+def get_history(limit: int = Query(default=20, ge=1, le=200)):
+    records = load_briefing_history()
+    recent_records = records[-limit:]
+    return {"count": len(records), "records": recent_records}
+
+
+@app.post("/backtest")
+def post_backtest(payload: dict[str, object] = Body(default_factory=dict)):
+    history = payload.get("history", [])
+    outcomes = payload.get("outcomes", {})
+
+    if not isinstance(history, list):
+        history = []
+    if not isinstance(outcomes, dict):
+        outcomes = {}
+
+    results = backtest_history(history, outcomes)
+    return {"results": results, "summary": summarize_backtest(results)}

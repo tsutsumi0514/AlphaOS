@@ -43,6 +43,7 @@
   - `pytest`
 ## Current Implementation
 - `src/app.py`: FastAPI entrypoint for `/` and `/briefing`
+- `src/app.py`: history and backtest API endpoints
 - `src/collectors/briefing_inputs.py`: briefing input collection
 - `src/agents/chairman_ai.py`: briefing orchestration
 - `src/agents/risk_ai.py`: risk review step

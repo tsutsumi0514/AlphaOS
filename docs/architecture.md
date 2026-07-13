@@ -9,6 +9,7 @@ The current MVP uses a JSON `/briefing` API and a simple HTML `/` presenter.
 Risk and evidence logic now live in a small analyzer module so the orchestration layer can stay compact.
 The current v2 step adds explicit collector and agent entry points without changing the public API.
 The current v3 step adds JSONL history storage and minimal backtesting helpers.
+The current API layer also exposes `/history` and `/backtest` for reviewing stored briefings and scoring them against outcomes.
 
 ## Target Layering
 

@@ -59,6 +59,7 @@ Current collectors fetch external inputs:
 ### API Layer
 - `src/app.py` exposes the `/briefing` endpoint.
 - `src/app.py` also exposes `/` as the simple Web presenter.
+- `src/app.py` also exposes `/history` and `/backtest` for learning loop review.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 
@@ -80,6 +81,8 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 ## Implemented Features
 - FastAPI `/briefing` endpoint.
 - Simple HTML `/` presenter.
+- `/history` endpoint for stored briefing snapshots.
+- `/backtest` endpoint for scoring a briefing set against outcomes.
 - Briefing input collector under `src/collectors/briefing_inputs.py`.
 - Top-level coordinator under `src/agents/chairman_ai.py`.
 - Risk review step under `src/agents/risk_ai.py`.
