@@ -1,12 +1,9 @@
-def build_briefing():
-    return {
-        "market_state": "unknown",
-        "watchlist_status": [],
-        "risk_alerts": [],
-        "key_changes": [],
-    }
+import uvicorn
+
+
+def main():
+    uvicorn.run("src.app:app", host="127.0.0.1", port=8000, reload=True)
 
 
 if __name__ == "__main__":
-    briefing = build_briefing()
-    print(briefing)
+    main()
