@@ -17,3 +17,10 @@
 
 ## Key Docs
 - [Project Bible](docs/Project_Bible.md)
+- [Codex Guide](prompts/Codex_Guide.md)
+- [ADR-0001](decisions/ADR-0001.md)
+- [Roadmap](roadmap/roadmap.md)
+
+## Project Structure
+- `src/` Application source code
+- `tests/` Automated tests
