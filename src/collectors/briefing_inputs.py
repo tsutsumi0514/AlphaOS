@@ -18,7 +18,9 @@ def parse_watchlist_symbols(
         return [symbol for symbol in symbols if symbol]
 
     if watchlist_symbol:
-        return [watchlist_symbol.strip()]
+        symbol = watchlist_symbol.strip()
+        if symbol:
+            return [symbol]
 
     return list(DEFAULT_WATCHLIST_SYMBOLS)
 

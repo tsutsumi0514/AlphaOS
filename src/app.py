@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
@@ -11,6 +13,7 @@ from .storage.outcome_history import record_market_outcome
 from .presenters.web import render_homepage
 
 app = FastAPI(title="AlphaOS")
+logger = logging.getLogger(__name__)
 
 
 @app.get("/briefing")
@@ -32,8 +35,8 @@ def get_briefing(
     briefing = compose_briefing(source)
     try:
         record_briefing_snapshot(briefing, source)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Failed to record briefing snapshot: %s", exc)
     return briefing
 
 
@@ -92,7 +95,10 @@ def post_outcome(payload: dict[str, object] = Body(default_factory=dict)):
             key: value for key, value in payload.items() if key != "briefing_id"
         }
 
-    record = record_market_outcome(briefing_id.strip(), outcome_payload)
+    try:
+        record = record_market_outcome(briefing_id.strip(), outcome_payload)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="failed to record outcome") from exc
     return {
         "status": "recorded",
         "briefing_id": briefing_id.strip(),

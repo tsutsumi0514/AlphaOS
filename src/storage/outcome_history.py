@@ -11,7 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 
-DEFAULT_OUTCOME_PATH = Path(".alphaos") / "outcome-history.jsonl"
+DEFAULT_OUTCOME_PATH = Path.home() / ".alphaos" / "outcome-history.jsonl"
 OUTCOME_PATH_ENV = "ALPHAOS_OUTCOME_PATH"
 
 

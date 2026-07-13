@@ -19,3 +19,23 @@ def test_get_cached_value_reuses_fresh_entry(monkeypatch):
     assert second == 1
     assert third == 2
     assert calls == ["called", "called"]
+
+
+def test_get_cached_value_does_not_cache_none(monkeypatch):
+    times = iter([0.0, 1.0, 2.0])
+    monkeypatch.setattr("src.cache.monotonic", lambda: next(times))
+
+    calls = []
+
+    def producer():
+        calls.append("called")
+        if len(calls) == 1:
+            return None
+        return "value"
+
+    first = get_cached_value("beta", producer, ttl_seconds=5)
+    second = get_cached_value("beta", producer, ttl_seconds=5)
+
+    assert first is None
+    assert second == "value"
+    assert calls == ["called", "called"]

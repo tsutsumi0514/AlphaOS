@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from src.storage.outcome_history import load_market_outcomes, record_market_outcome
+from src.storage.outcome_history import resolve_outcome_path
 
 
 def test_record_market_outcome_appends_jsonl(tmp_path):
@@ -24,3 +27,9 @@ def test_load_market_outcomes_ignores_bad_lines(tmp_path):
     records = load_market_outcomes(path)
 
     assert records == [{"ok": True}]
+
+
+def test_resolve_outcome_path_defaults_outside_repo():
+    path = resolve_outcome_path()
+
+    assert path == Path.home() / ".alphaos" / "outcome-history.jsonl"

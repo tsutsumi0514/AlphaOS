@@ -8,6 +8,10 @@ def test_parse_watchlist_symbols_prefers_csv():
     assert parse_watchlist_symbols("7203.T, 6758.T, ", "9984.T") == ["7203.T", "6758.T"]
 
 
+def test_parse_watchlist_symbols_uses_default_for_blank_single_symbol():
+    assert parse_watchlist_symbols(None, "   ") == ["7203.T", "6758.T", "9984.T"]
+
+
 def test_collect_briefing_source_returns_partial_data(monkeypatch):
     monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", lambda: 156.2)
     monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", lambda: None)

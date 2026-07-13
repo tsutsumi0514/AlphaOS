@@ -39,8 +39,8 @@ Current collectors fetch external inputs:
 - `src/agents/risk_ai.py` owns the risk review step.
 
 ### Storage and Learning Layer
-- `src/storage/briefing_history.py` stores briefing snapshots in JSONL.
-- `src/storage/outcome_history.py` stores realized outcomes in JSONL.
+- `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.
+- `src/storage/outcome_history.py` stores realized outcomes in JSONL under the user's home directory by default.
 - `src/learning/backtest.py` scores briefings against later outcomes and aggregates results.
 - `src/learning/feedback.py` summarizes recent learning performance for the next briefing.
 
@@ -163,6 +163,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Tests should stub network calls where possible.
 - Do not introduce secrets, API keys, or personal tokens.
 - Keep the repo public-safe.
+- Default history and outcome files live outside the repository tree; env vars can override them.
 - When changing payload shape, update docs and tests together.
 
 ## Verification

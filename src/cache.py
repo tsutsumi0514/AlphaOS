@@ -26,5 +26,8 @@ def get_cached_value(key: str, producer: Callable[[], T], ttl_seconds: int) -> T
         return entry.value  # type: ignore[return-value]
 
     value = producer()
-    _CACHE[key] = CacheEntry(value=value, expires_at=now + ttl_seconds)
+    if value is not None:
+        _CACHE[key] = CacheEntry(value=value, expires_at=now + ttl_seconds)
+    else:
+        _CACHE.pop(key, None)
     return value

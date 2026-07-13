@@ -11,7 +11,7 @@ from typing import Any
 from uuid import uuid4
 
 
-DEFAULT_HISTORY_PATH = Path(".alphaos") / "briefing-history.jsonl"
+DEFAULT_HISTORY_PATH = Path.home() / ".alphaos" / "briefing-history.jsonl"
 HISTORY_PATH_ENV = "ALPHAOS_HISTORY_PATH"
 
 
