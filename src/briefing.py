@@ -36,6 +36,36 @@ def derive_fx_state(usd_jpy: float | int | None) -> str:
     return "neutral"
 
 
+def summarize_key_changes(briefing: Briefing) -> list[str]:
+    """Build a short list of human-readable market changes."""
+    changes: list[str] = []
+
+    market_state = briefing.get("market_state")
+    if market_state == "bullish":
+        changes.append("Nikkei momentum is positive today.")
+    elif market_state == "bearish":
+        changes.append("Nikkei momentum is under pressure today.")
+
+    fx_state = briefing.get("fx_state")
+    if fx_state == "weak yen":
+        changes.append("Yen weakness is supporting exporter sentiment.")
+    elif fx_state == "strong yen":
+        changes.append("Yen strength may pressure exporter sentiment.")
+
+    watchlist_status = briefing.get("watchlist_status")
+    if isinstance(watchlist_status, list) and watchlist_status:
+        first = watchlist_status[0]
+        if isinstance(first, Mapping):
+            symbol = first.get("symbol", "Watchlist")
+            status = first.get("status")
+            if status == "strong":
+                changes.append(f"{symbol} is showing strong watchlist momentum.")
+            elif status == "weak":
+                changes.append(f"{symbol} is weakening on the watchlist.")
+
+    return changes
+
+
 def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
     """Return a briefing payload, optionally merging values from source."""
     briefing: Briefing = {
@@ -59,5 +89,8 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         if key in source and key != "fx_state":
             value = source[key]
             briefing[key] = list(value) if isinstance(value, list) else value
+
+    if not briefing["key_changes"]:
+        briefing["key_changes"] = summarize_key_changes(briefing)
 
     return briefing

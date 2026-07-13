@@ -30,6 +30,7 @@ def test_briefing_endpoint_derives_market_state_from_change_pct():
     assert response.status_code == 200
     data = response.json()
     assert data["market_state"] == "bullish"
+    assert "Nikkei momentum is positive today." in data["key_changes"]
 
 
 def test_briefing_endpoint_uses_fetched_usd_jpy(monkeypatch):
@@ -92,3 +93,4 @@ def test_briefing_endpoint_accepts_watchlist_symbol(monkeypatch):
     data = response.json()
     assert data["watchlist_status"][0]["symbol"] == "9984.T"
     assert data["watchlist_status"][0]["status"] == "weak"
+    assert "9984.T is weakening on the watchlist." in data["key_changes"]

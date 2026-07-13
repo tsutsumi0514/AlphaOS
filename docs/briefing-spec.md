@@ -14,3 +14,8 @@ Show the minimum market information needed to understand the current situation i
 - Keep the output short.
 - Prefer simple labels over long explanations.
 - Use the same field names every time.
+
+## Key Change Rules
+- Generate short human-readable sentences when `key_changes` is not explicitly provided.
+- Prioritize market tone, FX tone, and the first watchlist symbol.
+- Keep the list compact enough for a quick morning scan.

@@ -21,3 +21,24 @@ def test_build_briefing_derives_market_state_from_change_pct():
     briefing = build_briefing({"market_change_pct": -1.2})
 
     assert briefing["market_state"] == "bearish"
+
+
+def test_build_briefing_generates_key_changes_from_states():
+    briefing = build_briefing(
+        {
+            "market_change_pct": 1.0,
+            "usd_jpy": 156.2,
+            "watchlist_status": [
+                {
+                    "symbol": "7203.T",
+                    "price": 2810.0,
+                    "change_pct": 2.4,
+                    "status": "strong",
+                }
+            ],
+        }
+    )
+
+    assert "Nikkei momentum is positive today." in briefing["key_changes"]
+    assert "Yen weakness is supporting exporter sentiment." in briefing["key_changes"]
+    assert "7203.T is showing strong watchlist momentum." in briefing["key_changes"]
