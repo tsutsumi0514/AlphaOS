@@ -40,7 +40,9 @@ Current collectors fetch external inputs:
 
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL.
+- `src/storage/outcome_history.py` stores realized outcomes in JSONL.
 - `src/learning/backtest.py` scores briefings against later outcomes and aggregates results.
+- `src/learning/feedback.py` summarizes recent learning performance for the next briefing.
 
 ### Briefing Orchestration Layer
 - `src/briefing.py` merges signals into a compact briefing payload.
@@ -60,6 +62,7 @@ Current collectors fetch external inputs:
 - `src/app.py` exposes the `/briefing` endpoint.
 - `src/app.py` also exposes `/` as the simple Web presenter.
 - `src/app.py` also exposes `/history` and `/backtest` for learning loop review.
+- `src/app.py` also exposes `/outcome` and `/learning`.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 
@@ -83,11 +86,15 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Simple HTML `/` presenter.
 - `/history` endpoint for stored briefing snapshots.
 - `/backtest` endpoint for scoring a briefing set against outcomes.
+- `/outcome` endpoint for recording realized outcomes.
+- `/learning` endpoint for reading the current learning summary.
 - Briefing input collector under `src/collectors/briefing_inputs.py`.
 - Top-level coordinator under `src/agents/chairman_ai.py`.
 - Risk review step under `src/agents/risk_ai.py`.
 - JSONL history storage under `src/storage/briefing_history.py`.
+- JSONL outcome storage under `src/storage/outcome_history.py`.
 - Minimal backtesting helpers under `src/learning/backtest.py`.
+- Learning summary helpers under `src/learning/feedback.py`.
 - Automatic USD/JPY fetching.
 - Automatic Nikkei change fetching.
 - Automatic watchlist fetching for multiple symbols.
@@ -117,6 +124,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - `src/analyzers/briefing_signals.py` holds the first dedicated analysis helpers.
 - `src/collectors/briefing_inputs.py` and `src/agents/chairman_ai.py` establish the first explicit collector/agent split.
 - `src/storage/briefing_history.py` and `src/learning/backtest.py` establish the first persistence and learning loop.
+- `src/storage/outcome_history.py` and `src/learning/feedback.py` close the learning loop enough to inspect and reflect on outcomes.
 - The architecture must allow future separation into collectors, analyzers, agents, and presenters.
 - Evidence should be first-class so that later AI coordination and learning are possible.
 - LINE should not be the only UI target; the output must be presenter-friendly.

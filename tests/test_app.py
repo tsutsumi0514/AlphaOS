@@ -30,6 +30,15 @@ def stub_external_sources(monkeypatch):
             "url": "https://example.com/news",
         },
     )
+    monkeypatch.setattr(
+        "src.agents.chairman_ai.build_learning_summary",
+        lambda: {
+            "status": "insufficient",
+            "sample_size": 0,
+            "accuracy": None,
+            "notes": ["No matched outcomes yet."],
+        },
+    )
     monkeypatch.setattr("src.app.record_briefing_snapshot", lambda briefing, source: None)
 
 
@@ -48,6 +57,8 @@ def test_briefing_endpoint_returns_expected_keys():
     assert "reasons" in data
     assert "evidence" in data
     assert "confidence" in data
+    assert "briefing_id" in data
+    assert "learning_summary" in data
 
 
 def test_briefing_endpoint_derives_fx_state_from_usd_jpy():
@@ -194,6 +205,7 @@ def test_homepage_returns_html_briefing():
     assert "Risk Alerts" in response.text
     assert "Reasons" in response.text
     assert "Evidence" in response.text
+    assert "Learning" in response.text
     assert "Confidence" in response.text
 
 
@@ -232,6 +244,45 @@ def test_history_endpoint_returns_recent_records(monkeypatch):
     assert data["count"] == 2
     assert len(data["records"]) == 1
     assert data["records"][0]["briefing_id"] == "two"
+
+
+def test_outcome_endpoint_records_result(monkeypatch):
+    monkeypatch.setattr("src.app.record_market_outcome", lambda briefing_id, outcome: {"briefing_id": briefing_id, "outcome": outcome})
+    monkeypatch.setattr(
+        "src.app.build_learning_summary",
+        lambda: {"status": "strong", "sample_size": 1, "accuracy": 1.0, "notes": ["Recent forecast accuracy is stable."]},
+    )
+
+    response = client.post(
+        "/outcome",
+        json={
+            "briefing_id": "alpha",
+            "outcome": {
+                "market_change_pct": 1.2,
+                "usd_jpy": 156.2,
+            },
+        },
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "recorded"
+    assert data["briefing_id"] == "alpha"
+    assert data["learning_summary"]["status"] == "strong"
+
+
+def test_learning_endpoint_returns_summary(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.build_learning_summary",
+        lambda: {"status": "moderate", "sample_size": 3, "accuracy": 0.67, "notes": ["Recent forecast accuracy is mixed."]},
+    )
+
+    response = client.get("/learning")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "moderate"
+    assert data["sample_size"] == 3
 
 
 def test_backtest_endpoint_scores_payload():

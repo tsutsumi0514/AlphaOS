@@ -44,13 +44,16 @@
 ## Current Implementation
 - `src/app.py`: FastAPI entrypoint for `/` and `/briefing`
 - `src/app.py`: history and backtest API endpoints
+- `src/app.py`: outcome and learning API endpoints
 - `src/collectors/briefing_inputs.py`: briefing input collection
 - `src/agents/chairman_ai.py`: briefing orchestration
 - `src/agents/risk_ai.py`: risk review step
 - `src/briefing.py`: Briefing data builder
 - `src/analyzers/briefing_signals.py`: Risk and evidence helpers
 - `src/storage/briefing_history.py`: JSONL briefing history
+- `src/storage/outcome_history.py`: JSONL outcome history
 - `src/learning/backtest.py`: Simple scoring and backtest helpers
+- `src/learning/feedback.py`: Learning summary helpers
 - `src/evidence.py`: Structured evidence objects
 - `src/presenters/web.py`: Simple HTML presenter
 - `tests/test_app.py`: API and web UI tests

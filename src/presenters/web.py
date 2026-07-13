@@ -177,6 +177,7 @@ def _render_page(briefing: Mapping[str, Any]) -> str:
         { _render_section("Risk Alerts", briefing.get("risk_alerts")) }
         { _render_section("Key Changes", briefing.get("key_changes")) }
         { _render_section("Reasons", briefing.get("reasons")) }
+        { _render_learning_section(briefing.get("learning_summary")) }
         { _render_evidence_section(briefing.get("evidence")) }
       </div>
       <footer>Final decision remains with the human.</footer>
@@ -220,6 +221,32 @@ def _render_evidence_section(value: Any) -> str:
             rendered_items.append(f"<li>{escape(str(item))}</li>")
 
     return "<section><h2>Evidence</h2><ul>" + "".join(rendered_items) + "</ul></section>"
+
+
+def _render_learning_section(value: Any) -> str:
+    if not isinstance(value, Mapping):
+        return "<section><h2>Learning</h2><p class='empty'>None</p></section>"
+
+    status = _text(value.get("status"), "insufficient")
+    sample_size = value.get("sample_size", 0)
+    accuracy = value.get("accuracy")
+    notes = _list_items(value.get("notes"))
+
+    rendered_notes = ""
+    if notes:
+        rendered_notes = "<ul>" + "".join(
+            f"<li>{escape(_text(note, ''))}</li>" for note in notes
+        ) + "</ul>"
+    else:
+        rendered_notes = "<p class='empty'>None</p>"
+
+    accuracy_text = "n/a" if accuracy is None else f"{float(accuracy) * 100:.0f}%"
+    return (
+        "<section><h2>Learning</h2>"
+        f"<p class='empty'>status: {escape(status)}, sample: {escape(str(sample_size))}, accuracy: {escape(accuracy_text)}</p>"
+        f"{rendered_notes}"
+        "</section>"
+    )
 
 
 def _list_items(value: Any) -> list[Any]:

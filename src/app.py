@@ -1,11 +1,13 @@
-from fastapi import Body, FastAPI, Query
+from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
 
 from .agents.chairman_ai import compose_briefing
 from .collectors.briefing_inputs import collect_briefing_source
 from .learning.backtest import backtest_history, summarize_backtest
+from .learning.feedback import build_learning_summary
 from .storage.briefing_history import record_briefing_snapshot
 from .storage.briefing_history import load_briefing_history
+from .storage.outcome_history import record_market_outcome
 from .presenters.web import render_homepage
 
 app = FastAPI(title="AlphaOS")
@@ -74,3 +76,31 @@ def post_backtest(payload: dict[str, object] = Body(default_factory=dict)):
 
     results = backtest_history(history, outcomes)
     return {"results": results, "summary": summarize_backtest(results)}
+
+
+@app.post("/outcome")
+def post_outcome(payload: dict[str, object] = Body(default_factory=dict)):
+    briefing_id = payload.get("briefing_id")
+    if not isinstance(briefing_id, str) or not briefing_id.strip():
+        raise HTTPException(status_code=400, detail="briefing_id is required")
+
+    outcome = payload.get("outcome")
+    if isinstance(outcome, dict):
+        outcome_payload = outcome
+    else:
+        outcome_payload = {
+            key: value for key, value in payload.items() if key != "briefing_id"
+        }
+
+    record = record_market_outcome(briefing_id.strip(), outcome_payload)
+    return {
+        "status": "recorded",
+        "briefing_id": briefing_id.strip(),
+        "record": record,
+        "learning_summary": build_learning_summary(),
+    }
+
+
+@app.get("/learning")
+def get_learning():
+    return build_learning_summary()
