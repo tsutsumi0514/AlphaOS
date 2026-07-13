@@ -9,6 +9,7 @@ def test_briefing_endpoint_returns_expected_keys():
 
     assert response.status_code == 200
     data = response.json()
+    assert "headline" in data
     assert "market_state" in data
     assert "fx_state" in data
     assert "watchlist_status" in data
@@ -122,4 +123,5 @@ def test_briefing_endpoint_generates_risk_alerts(monkeypatch):
     assert "Both market and currency conditions are risk-off." in data["risk_alerts"]
     assert "Nikkei day-over-day change is negative." in data["reasons"]
     assert "USD/JPY is in a strong-yen range." in data["reasons"]
+    assert data["headline"] == "Nikkei is under pressure. yen is strong. 7203.T is weak."
     assert data["confidence"] == "high"

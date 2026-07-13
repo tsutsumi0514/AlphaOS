@@ -6,6 +6,7 @@ from typing import Any
 Briefing = dict[str, Any]
 
 DEFAULT_BRIEFING: Briefing = {
+    "headline": "Market overview is not ready yet.",
     "market_state": "unknown",
     "fx_state": "unknown",
     "watchlist_status": [],
@@ -66,6 +67,46 @@ def summarize_key_changes(briefing: Briefing) -> list[str]:
                 changes.append(f"{symbol} is weakening on the watchlist.")
 
     return changes
+
+
+def summarize_headline(briefing: Briefing) -> str:
+    """Build a one-line headline for a fast morning read."""
+    market_state = briefing.get("market_state")
+    fx_state = briefing.get("fx_state")
+    watchlist_status = briefing.get("watchlist_status")
+
+    headline_parts: list[str] = []
+
+    if market_state == "bullish":
+        headline_parts.append("Nikkei is firm")
+    elif market_state == "bearish":
+        headline_parts.append("Nikkei is under pressure")
+    elif market_state == "neutral":
+        headline_parts.append("Nikkei is steady")
+
+    if fx_state == "weak yen":
+        headline_parts.append("yen is weak")
+    elif fx_state == "strong yen":
+        headline_parts.append("yen is strong")
+    elif fx_state == "neutral":
+        headline_parts.append("FX is stable")
+
+    if isinstance(watchlist_status, list) and watchlist_status:
+        first = watchlist_status[0]
+        if isinstance(first, Mapping):
+            symbol = first.get("symbol", "Watchlist")
+            status = first.get("status")
+            if status == "strong":
+                headline_parts.append(f"{symbol} is strong")
+            elif status == "weak":
+                headline_parts.append(f"{symbol} is weak")
+            elif status == "steady":
+                headline_parts.append(f"{symbol} is steady")
+
+    if headline_parts:
+        return ". ".join(headline_parts) + "."
+
+    return DEFAULT_BRIEFING["headline"]
 
 
 def summarize_risk_alerts(briefing: Briefing) -> list[str]:
@@ -151,6 +192,7 @@ def derive_confidence(briefing: Briefing) -> str:
 def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
     """Return a briefing payload, optionally merging values from source."""
     briefing: Briefing = {
+        "headline": DEFAULT_BRIEFING["headline"],
         "market_state": DEFAULT_BRIEFING["market_state"],
         "fx_state": DEFAULT_BRIEFING["fx_state"],
         "watchlist_status": list(DEFAULT_BRIEFING["watchlist_status"]),
@@ -179,6 +221,9 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
 
     if not briefing["key_changes"]:
         briefing["key_changes"] = summarize_key_changes(briefing)
+
+    if briefing["headline"] == DEFAULT_BRIEFING["headline"]:
+        briefing["headline"] = summarize_headline(briefing)
 
     if not briefing["reasons"]:
         briefing["reasons"] = summarize_reasons(briefing)

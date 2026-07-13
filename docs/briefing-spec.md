@@ -4,6 +4,7 @@
 Show the minimum market information needed to understand the current situation in a few seconds.
 
 ## Fields
+- `headline`: One short line for a 5-second morning read.
 - `market_state`: Overall market tone, such as bullish, bearish, or unknown.
 - `fx_state`: Currency market tone, especially JPY/USD pressure.
 - `watchlist_status`: Status of watched symbols and themes.
@@ -31,3 +32,8 @@ Show the minimum market information needed to understand the current situation i
 - Generate short reasons from the current market, FX, and watchlist signals.
 - Estimate confidence from how many data-backed signals are available.
 - Prefer simple confidence labels over numeric scores.
+
+## Headline Rules
+- Combine the most important market, FX, and watchlist signals into one short line.
+- Prefer simple phrases over long explanations.
+- Keep the headline readable in one glance.

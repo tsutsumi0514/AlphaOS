@@ -42,6 +42,7 @@ def test_build_briefing_generates_key_changes_from_states():
     assert "Nikkei momentum is positive today." in briefing["key_changes"]
     assert "Yen weakness is supporting exporter sentiment." in briefing["key_changes"]
     assert "7203.T is showing strong watchlist momentum." in briefing["key_changes"]
+    assert briefing["headline"] == "Nikkei is firm. yen is weak. 7203.T is strong."
 
 
 def test_build_briefing_generates_risk_alerts_from_states():
@@ -86,3 +87,9 @@ def test_build_briefing_generates_reasons_and_confidence():
     assert "USD/JPY is in a weak-yen range." in briefing["reasons"]
     assert "7203.T is rising strongly versus the previous close." in briefing["reasons"]
     assert briefing["confidence"] == "high"
+
+
+def test_build_briefing_uses_default_headline_without_signals():
+    briefing = build_briefing()
+
+    assert briefing["headline"] == "Market overview is not ready yet."
