@@ -94,3 +94,27 @@ def test_briefing_endpoint_accepts_watchlist_symbol(monkeypatch):
     assert data["watchlist_status"][0]["symbol"] == "9984.T"
     assert data["watchlist_status"][0]["status"] == "weak"
     assert "9984.T is weakening on the watchlist." in data["key_changes"]
+
+
+def test_briefing_endpoint_generates_risk_alerts(monkeypatch):
+    monkeypatch.setattr("src.app.fetch_usd_jpy_rate", lambda: 144.0)
+    monkeypatch.setattr("src.app.fetch_nikkei_change_pct", lambda: -1.2)
+    monkeypatch.setattr(
+        "src.app.fetch_watchlist_status",
+        lambda symbol: [
+            {
+                "symbol": symbol,
+                "price": 2700.0,
+                "change_pct": -2.4,
+                "status": "weak",
+            }
+        ],
+    )
+
+    response = client.get("/briefing")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "Market tone is bearish. Keep new positions small." in data["risk_alerts"]
+    assert "Strong yen may pressure export-related names." in data["risk_alerts"]
+    assert "Both market and currency conditions are risk-off." in data["risk_alerts"]

@@ -66,6 +66,34 @@ def summarize_key_changes(briefing: Briefing) -> list[str]:
     return changes
 
 
+def summarize_risk_alerts(briefing: Briefing) -> list[str]:
+    """Build short risk-oriented alerts from the current briefing state."""
+    alerts: list[str] = []
+
+    market_state = briefing.get("market_state")
+    fx_state = briefing.get("fx_state")
+    watchlist_status = briefing.get("watchlist_status")
+
+    if market_state == "bearish":
+        alerts.append("Market tone is bearish. Keep new positions small.")
+
+    if fx_state == "strong yen":
+        alerts.append("Strong yen may pressure export-related names.")
+
+    if isinstance(watchlist_status, list) and watchlist_status:
+        first = watchlist_status[0]
+        if isinstance(first, Mapping):
+            symbol = first.get("symbol", "Watchlist")
+            status = first.get("status")
+            if status == "weak":
+                alerts.append(f"{symbol} is weakening. Review entry timing carefully.")
+
+    if market_state == "bearish" and fx_state == "strong yen":
+        alerts.append("Both market and currency conditions are risk-off.")
+
+    return alerts
+
+
 def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
     """Return a briefing payload, optionally merging values from source."""
     briefing: Briefing = {
@@ -89,6 +117,9 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         if key in source and key != "fx_state":
             value = source[key]
             briefing[key] = list(value) if isinstance(value, list) else value
+
+    if not briefing["risk_alerts"]:
+        briefing["risk_alerts"] = summarize_risk_alerts(briefing)
 
     if not briefing["key_changes"]:
         briefing["key_changes"] = summarize_key_changes(briefing)

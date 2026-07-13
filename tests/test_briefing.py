@@ -42,3 +42,25 @@ def test_build_briefing_generates_key_changes_from_states():
     assert "Nikkei momentum is positive today." in briefing["key_changes"]
     assert "Yen weakness is supporting exporter sentiment." in briefing["key_changes"]
     assert "7203.T is showing strong watchlist momentum." in briefing["key_changes"]
+
+
+def test_build_briefing_generates_risk_alerts_from_states():
+    briefing = build_briefing(
+        {
+            "market_change_pct": -1.2,
+            "usd_jpy": 144.0,
+            "watchlist_status": [
+                {
+                    "symbol": "7203.T",
+                    "price": 2700.0,
+                    "change_pct": -2.4,
+                    "status": "weak",
+                }
+            ],
+        }
+    )
+
+    assert "Market tone is bearish. Keep new positions small." in briefing["risk_alerts"]
+    assert "Strong yen may pressure export-related names." in briefing["risk_alerts"]
+    assert "7203.T is weakening. Review entry timing carefully." in briefing["risk_alerts"]
+    assert "Both market and currency conditions are risk-off." in briefing["risk_alerts"]
