@@ -1,7 +1,21 @@
+import pytest
+
 from fastapi.testclient import TestClient
 from src.app import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def stub_latest_news(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.fetch_latest_market_news",
+        lambda: {
+            "title": "日経平均、寄り付き後に上昇",
+            "source": "Google News",
+            "url": "https://example.com/news",
+        },
+    )
 
 
 def test_briefing_endpoint_returns_expected_keys():
@@ -12,6 +26,7 @@ def test_briefing_endpoint_returns_expected_keys():
     assert "headline" in data
     assert "market_state" in data
     assert "fx_state" in data
+    assert "news_item" in data
     assert "watchlist_status" in data
     assert "risk_alerts" in data
     assert "key_changes" in data
@@ -77,6 +92,15 @@ def test_briefing_endpoint_uses_fetched_watchlist_status(monkeypatch):
     assert data["watchlist_status"][0]["symbol"] == "7203.T"
     assert data["watchlist_status"][0]["status"] == "strong"
     assert len(data["watchlist_status"]) == 3
+
+
+def test_briefing_endpoint_uses_fetched_news():
+    response = client.get("/briefing")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["news_item"]["title"] == "日経平均、寄り付き後に上昇"
+    assert "News: 日経平均、寄り付き後に上昇 (Google News)." in data["key_changes"]
 
 
 def test_briefing_endpoint_accepts_watchlist_symbol(monkeypatch):

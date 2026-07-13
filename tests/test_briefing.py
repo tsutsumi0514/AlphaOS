@@ -89,6 +89,21 @@ def test_build_briefing_generates_reasons_and_confidence():
     assert briefing["confidence"] == "high"
 
 
+def test_build_briefing_includes_news_in_key_changes():
+    briefing = build_briefing(
+        {
+            "news_item": {
+                "title": "日経平均、寄り付き後に上昇",
+                "source": "Google News",
+                "url": "https://example.com/news",
+            }
+        }
+    )
+
+    assert briefing["news_item"]["title"] == "日経平均、寄り付き後に上昇"
+    assert "News: 日経平均、寄り付き後に上昇 (Google News)." in briefing["key_changes"]
+
+
 def test_build_briefing_uses_default_headline_without_signals():
     briefing = build_briefing()
 

@@ -7,6 +7,7 @@ Show the minimum market information needed to understand the current situation i
 - `headline`: One short line for a 5-second morning read.
 - `market_state`: Overall market tone, such as bullish, bearish, or unknown.
 - `fx_state`: Currency market tone, especially JPY/USD pressure.
+- `news_item`: A single latest market news item, including what happened.
 - `watchlist_status`: Status of watched symbols and themes.
 - `risk_alerts`: Short warnings that need attention.
 - `key_changes`: Important changes since the previous check.
@@ -27,6 +28,11 @@ Show the minimum market information needed to understand the current situation i
 - Generate short risk-first warnings when `risk_alerts` is not explicitly provided.
 - Prioritize bearish market tone, exporter risk from strong yen, and weakness in the first watchlist symbol.
 - Keep alerts actionable and concise.
+
+## News Rules
+- Fetch only one latest market-related news item for the briefing.
+- Keep the output short and human readable.
+- Include the news title as part of the "what happened" layer when available.
 
 ## Reason And Confidence Rules
 - Generate short reasons from the current market, FX, and watchlist signals.

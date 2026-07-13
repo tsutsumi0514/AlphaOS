@@ -9,6 +9,7 @@ DEFAULT_BRIEFING: Briefing = {
     "headline": "Market overview is not ready yet.",
     "market_state": "unknown",
     "fx_state": "unknown",
+    "news_item": None,
     "watchlist_status": [],
     "risk_alerts": [],
     "key_changes": [],
@@ -54,6 +55,16 @@ def summarize_key_changes(briefing: Briefing) -> list[str]:
         changes.append("Yen weakness is supporting exporter sentiment.")
     elif fx_state == "strong yen":
         changes.append("Yen strength may pressure exporter sentiment.")
+
+    news_item = _news_item(briefing)
+    if news_item is not None:
+        title = news_item.get("title")
+        source = news_item.get("source")
+        if isinstance(title, str) and title.strip():
+            news_sentence = f"News: {title.strip()}"
+            if isinstance(source, str) and source.strip():
+                news_sentence += f" ({source.strip()})"
+            changes.append(f"{news_sentence}.")
 
     for item in _watchlist_items(briefing):
         symbol = item.get("symbol", "Watchlist")
@@ -132,6 +143,13 @@ def _watchlist_items(briefing: Briefing) -> list[Mapping[str, Any]]:
     return items
 
 
+def _news_item(briefing: Briefing) -> Mapping[str, Any] | None:
+    news_item = briefing.get("news_item")
+    if isinstance(news_item, Mapping):
+        return news_item
+    return None
+
+
 def _primary_watchlist_item(briefing: Briefing) -> Mapping[str, Any] | None:
     items = _watchlist_items(briefing)
     if not items:
@@ -154,6 +172,8 @@ def derive_confidence(briefing: Briefing) -> str:
         score += 1
 
     if _watchlist_items(briefing):
+        score += 1
+    if _news_item(briefing) is not None:
         score += 1
 
     if score >= 3:
@@ -207,6 +227,7 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         "headline": DEFAULT_BRIEFING["headline"],
         "market_state": DEFAULT_BRIEFING["market_state"],
         "fx_state": DEFAULT_BRIEFING["fx_state"],
+        "news_item": DEFAULT_BRIEFING["news_item"],
         "watchlist_status": list(DEFAULT_BRIEFING["watchlist_status"]),
         "risk_alerts": list(DEFAULT_BRIEFING["risk_alerts"]),
         "key_changes": list(DEFAULT_BRIEFING["key_changes"]),

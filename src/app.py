@@ -2,6 +2,7 @@ from fastapi import FastAPI, Query
 
 from .briefing import build_briefing
 from .fx import fetch_usd_jpy_rate
+from .news import fetch_latest_market_news
 from .market import fetch_nikkei_change_pct
 from .watchlist import DEFAULT_WATCHLIST_SYMBOLS, fetch_watchlist_status
 
@@ -42,14 +43,17 @@ def get_briefing(
         watchlist_symbols, watchlist_symbol
     )
     watchlist_status = fetch_watchlist_status(requested_watchlist_symbols)
+    news_item = fetch_latest_market_news()
 
-    source: dict[str, float | list[dict[str, object]]] = {}
+    source: dict[str, object] = {}
     if usd_jpy is not None:
         source["usd_jpy"] = usd_jpy
     if market_change_pct is not None:
         source["market_change_pct"] = market_change_pct
     if watchlist_status:
         source["watchlist_status"] = watchlist_status
+    if news_item is not None:
+        source["news_item"] = news_item
 
     source = source or None
     return build_briefing(source)

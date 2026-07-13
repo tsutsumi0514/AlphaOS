@@ -7,11 +7,13 @@ Provide the first real input path for AlphaOS briefing generation.
 - `usd_jpy`: USD/JPY rate
 - `market_change_pct`: Nikkei 225 day-over-day percent change
 - `watchlist_status`: small multi-symbol watchlist snapshot
+- `news_item`: one latest market-related headline and source
 
 ## Derived Output
 - `fx_state`
 - `market_state`
 - `watchlist_status[*].status`
+- `news_item` -> `key_changes` one-line "what happened" summary
 
 ## Current Mapping
 - `usd_jpy >= 155` -> `weak yen`
@@ -23,6 +25,11 @@ Provide the first real input path for AlphaOS briefing generation.
 - `watchlist_status[*].change_pct >= 2.0` -> `strong`
 - `watchlist_status[*].change_pct <= -2.0` -> `weak`
 - otherwise -> `steady`
+
+## News Source
+- Use a single latest market-related headline.
+- Keep the news item short enough for the morning briefing.
+- Prefer a headline that explains what happened, not a full article digest.
 
 ## Next Sources
 - Nikkei 225
