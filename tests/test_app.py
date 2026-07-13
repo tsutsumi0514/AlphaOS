@@ -22,3 +22,13 @@ def test_briefing_endpoint_derives_fx_state_from_usd_jpy():
     assert response.status_code == 200
     data = response.json()
     assert data["fx_state"] == "weak yen"
+
+
+def test_briefing_endpoint_uses_fetched_usd_jpy(monkeypatch):
+    monkeypatch.setattr("src.app.fetch_usd_jpy_rate", lambda: 144.8)
+
+    response = client.get("/briefing")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["fx_state"] == "strong yen"
