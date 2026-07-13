@@ -31,6 +31,7 @@ def test_briefing_endpoint_returns_expected_keys():
     assert "risk_alerts" in data
     assert "key_changes" in data
     assert "reasons" in data
+    assert "evidence" in data
     assert "confidence" in data
 
 
@@ -165,4 +166,5 @@ def test_briefing_endpoint_generates_risk_alerts(monkeypatch):
     assert "7203.T is weakening versus the previous close." in data["reasons"]
     assert "6758.T is moving within a normal daily range." in data["reasons"]
     assert "9984.T is rising strongly versus the previous close." in data["reasons"]
+    assert data["evidence"]
     assert data["confidence"] == "high"

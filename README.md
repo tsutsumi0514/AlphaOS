@@ -17,6 +17,7 @@
 
 ## Key Docs
 - [Project Bible](docs/Project_Bible.md)
+- [Architecture](docs/architecture.md)
 - [Codex Guide](prompts/Codex_Guide.md)
 - [ADR-0001](decisions/ADR-0001.md)
 - [Roadmap](roadmap/roadmap.md)
@@ -31,7 +32,7 @@
 
 ## Run
 - Start the app:
-  - `uvicorn src.app:app --reload`
+  - `python -m src.main`
 
 ## Test
 - Run tests:
@@ -39,8 +40,5 @@
 ## Current Implementation
 - `src/app.py`: FastAPI entrypoint
 - `src/briefing.py`: Briefing data builder
+- `src/evidence.py`: Structured evidence objects
 - `tests/test_app.py`: API test
-
-## Run
-- Start the app:
-  - `python -m src.main`

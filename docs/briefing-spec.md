@@ -13,6 +13,7 @@ Show the minimum market information needed to understand the current situation i
 - `key_changes`: Important changes since the previous check.
 - `reasons`: Short statements explaining why the current view was produced.
 - `confidence`: A simple confidence label, such as low, medium, or high.
+- `evidence`: Structured proof items that support the current view.
 
 ## Principles
 - Keep the output short.
@@ -38,6 +39,12 @@ Show the minimum market information needed to understand the current situation i
 - Generate short reasons from the current market, FX, and watchlist signals.
 - Estimate confidence from how many data-backed signals are available.
 - Prefer simple confidence labels over numeric scores.
+
+## Evidence Rules
+- Preserve evidence as structured items instead of flattening everything into labels.
+- Include the source, a short label, and the key value that drove the signal.
+- Keep evidence compact enough for later AI coordination and learning.
+- Use evidence to support future ChairmanAI, RiskAI, and presenter layers.
 
 ## Headline Rules
 - Combine the most important market, FX, and watchlist signals into one short line.

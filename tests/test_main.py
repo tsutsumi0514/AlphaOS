@@ -10,6 +10,7 @@ def test_build_briefing_returns_expected_keys():
     assert "watchlist_status" in briefing
     assert "risk_alerts" in briefing
     assert "key_changes" in briefing
+    assert "evidence" in briefing
 
 
 def test_build_briefing_derives_fx_state_from_usd_jpy():

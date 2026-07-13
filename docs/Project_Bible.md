@@ -23,3 +23,10 @@ AlphaOS
 - 自動売買
 - 複雑すぎるダッシュボード
 - すべての市場データを詰め込むこと
+
+## Architecture Direction
+- Evidence-first design
+- Collectors, analyzers, agents, and presenters should be separable later
+- RiskAI should be a first-class concept
+- LINE専用にせず、Webや将来の音声UIへ展開できる形にする
+- v1 は Morning Briefing 完成に集中し、v1.5 以降で AI Meeting と Learning を拡張する

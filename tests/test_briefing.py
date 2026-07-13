@@ -23,6 +23,33 @@ def test_build_briefing_derives_market_state_from_change_pct():
     assert briefing["market_state"] == "bearish"
 
 
+def test_build_briefing_generates_evidence_from_signals():
+    briefing = build_briefing(
+        {
+            "market_change_pct": 1.0,
+            "usd_jpy": 156.2,
+            "news_item": {
+                "title": "日経平均、寄り付き後に上昇",
+                "source": "Google News",
+                "url": "https://example.com/news",
+            },
+            "watchlist_status": [
+                {
+                    "symbol": "7203.T",
+                    "price": 2810.0,
+                    "change_pct": 2.4,
+                    "status": "strong",
+                }
+            ],
+        }
+    )
+
+    assert any(item["source"] == "market" for item in briefing["evidence"])
+    assert any(item["source"] == "fx" for item in briefing["evidence"])
+    assert any(item["source"] == "news" for item in briefing["evidence"])
+    assert any(item["source"] == "watchlist" for item in briefing["evidence"])
+
+
 def test_build_briefing_generates_key_changes_from_states():
     briefing = build_briefing(
         {

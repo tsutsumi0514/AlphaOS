@@ -3,6 +3,8 @@
 from collections.abc import Mapping
 from typing import Any
 
+from .evidence import Evidence
+
 Briefing = dict[str, Any]
 
 DEFAULT_BRIEFING: Briefing = {
@@ -14,6 +16,7 @@ DEFAULT_BRIEFING: Briefing = {
     "risk_alerts": [],
     "key_changes": [],
     "reasons": [],
+    "evidence": [],
     "confidence": "low",
 }
 
@@ -131,6 +134,93 @@ def summarize_reasons(briefing: Briefing) -> list[str]:
     return reasons
 
 
+def summarize_evidence(
+    briefing: Briefing, source: Mapping[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """Build structured evidence items from the current briefing state."""
+    evidence: list[dict[str, Any]] = []
+
+    market_change_pct = _source_or_briefing_value(source, briefing, "market_change_pct")
+    if market_change_pct is not None:
+        evidence.append(
+            Evidence(
+                source="market",
+                label="Nikkei day-over-day change",
+                value=market_change_pct,
+                note=briefing.get("market_state"),
+            ).to_dict()
+        )
+
+    usd_jpy = _source_or_briefing_value(source, briefing, "usd_jpy")
+    if usd_jpy is not None:
+        evidence.append(
+            Evidence(
+                source="fx",
+                label="USD/JPY",
+                value=usd_jpy,
+                note=briefing.get("fx_state"),
+            ).to_dict()
+        )
+
+    news_item = _news_item(briefing)
+    if news_item is not None:
+        title = news_item.get("title")
+        source = news_item.get("source")
+        if isinstance(title, str) and title.strip():
+            evidence.append(
+                Evidence(
+                    source="news",
+                    label="Latest market news",
+                    value=title.strip(),
+                    note=source.strip() if isinstance(source, str) and source.strip() else None,
+                ).to_dict()
+            )
+
+    for item in _watchlist_items(briefing):
+        symbol = item.get("symbol")
+        if isinstance(symbol, str) and symbol.strip():
+            note_parts: list[str] = []
+            if "status" in item:
+                note_parts.append(f"status={item.get('status')}")
+            if "price" in item:
+                note_parts.append(f"price={item.get('price')}")
+            if "change_pct" in item:
+                note_parts.append(f"change_pct={item.get('change_pct')}")
+
+            evidence.append(
+                Evidence(
+                    source="watchlist",
+                    label=symbol.strip(),
+                    value=item.get("status"),
+                    note=", ".join(note_parts) if note_parts else None,
+                ).to_dict()
+            )
+
+    return evidence
+
+
+def _source_or_briefing_value(
+    source: Mapping[str, Any] | None, briefing: Briefing, key: str
+) -> Any:
+    if source is not None and key in source:
+        return source[key]
+    return briefing.get(key)
+
+
+def _evidence_items(briefing: Briefing) -> list[Mapping[str, Any]]:
+    evidence = briefing.get("evidence")
+    if not isinstance(evidence, list):
+        return []
+
+    items: list[Mapping[str, Any]] = []
+    for item in evidence:
+        if isinstance(item, Evidence):
+            items.append(item.to_dict())
+        elif isinstance(item, Mapping):
+            items.append(dict(item))
+    return items
+
+
 def _watchlist_items(briefing: Briefing) -> list[Mapping[str, Any]]:
     watchlist_status = briefing.get("watchlist_status")
     if not isinstance(watchlist_status, list):
@@ -171,6 +261,8 @@ def derive_confidence(briefing: Briefing) -> str:
     if briefing.get("fx_state") != "unknown":
         score += 1
 
+    if _evidence_items(briefing):
+        score += 1
     if _watchlist_items(briefing):
         score += 1
     if _news_item(briefing) is not None:
@@ -232,6 +324,7 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         "risk_alerts": list(DEFAULT_BRIEFING["risk_alerts"]),
         "key_changes": list(DEFAULT_BRIEFING["key_changes"]),
         "reasons": list(DEFAULT_BRIEFING["reasons"]),
+        "evidence": list(DEFAULT_BRIEFING["evidence"]),
         "confidence": DEFAULT_BRIEFING["confidence"],
     }
 
@@ -247,7 +340,13 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
     for key in briefing:
         if key in source and key != "fx_state":
             value = source[key]
-            briefing[key] = list(value) if isinstance(value, list) else value
+            if key == "evidence":
+                briefing[key] = _serialize_evidence(value)
+            else:
+                briefing[key] = list(value) if isinstance(value, list) else value
+
+    if not briefing["evidence"]:
+        briefing["evidence"] = summarize_evidence(briefing, source)
 
     if not briefing["risk_alerts"]:
         briefing["risk_alerts"] = summarize_risk_alerts(briefing)
@@ -265,3 +364,16 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         briefing["confidence"] = derive_confidence(briefing)
 
     return briefing
+
+
+def _serialize_evidence(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+
+    serialized: list[dict[str, Any]] = []
+    for item in value:
+        if isinstance(item, Evidence):
+            serialized.append(item.to_dict())
+        elif isinstance(item, Mapping):
+            serialized.append(dict(item))
+    return serialized
