@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 
 from fastapi import Body, FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -13,6 +14,7 @@ from .storage.briefing_history import load_briefing_history
 from .storage.outcome_history import record_market_outcome
 from .presenters.history import render_history_page
 from .presenters.web import render_homepage
+from .storage.news_history import record_news_snapshot
 
 app = FastAPI(title="AlphaOS")
 logger = logging.getLogger(__name__)
@@ -39,6 +41,10 @@ def get_briefing(
         record_briefing_snapshot(briefing, source)
     except Exception as exc:
         logger.warning("Failed to record briefing snapshot: %s", exc)
+    try:
+        record_news_snapshot(briefing.get("news_item"), recorded_at=datetime.now(timezone.utc))
+    except Exception as exc:
+        logger.warning("Failed to record news snapshot: %s", exc)
     return briefing
 
 
@@ -59,6 +65,10 @@ def get_homepage(
         usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol
     )
     briefing = compose_briefing(source)
+    try:
+        record_news_snapshot(briefing.get("news_item"), recorded_at=datetime.now(timezone.utc))
+    except Exception as exc:
+        logger.warning("Failed to record news snapshot: %s", exc)
     return render_homepage(briefing)
 
 

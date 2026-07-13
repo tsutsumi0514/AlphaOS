@@ -40,6 +40,7 @@ def stub_external_sources(monkeypatch):
         },
     )
     monkeypatch.setattr("src.app.record_briefing_snapshot", lambda briefing, source: None)
+    monkeypatch.setattr("src.app.record_news_snapshot", lambda news_item, recorded_at=None: None)
 
 
 def test_briefing_endpoint_returns_expected_keys():

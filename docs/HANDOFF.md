@@ -43,6 +43,7 @@ Current collectors fetch external inputs:
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.
 - `src/storage/outcome_history.py` stores realized outcomes in JSONL under the user's home directory by default.
+- `src/storage/news_history.py` stores archived market news in JSONL under the user's home directory by default.
 - `src/learning/backtest.py` scores briefings against later outcomes and aggregates weighted results.
 - `src/learning/feedback.py` summarizes recent learning performance for the next briefing and exposes period snapshots.
 
@@ -66,7 +67,7 @@ Current collectors fetch external inputs:
 - `src/app.py` also exposes `/history` and `/backtest` for learning loop review.
 - `src/app.py` also exposes `/history/view` as a simple Web review surface.
 - `src/app.py` also exposes `/outcome` and `/learning`.
-- `src/app.py` also exposes `/simulate` for historical replay.
+- `src/app.py` also exposes `/simulate` for historical replay and validation.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 
@@ -94,7 +95,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - `/outcome` endpoint for recording realized outcomes.
 - `/learning` endpoint for reading the current learning summary.
 - `/simulate` endpoint for replaying historical market inputs without future leakage.
-- Replay mode calibrates threshold labels on the selected historical window and reports a baseline comparison.
+- Replay mode calibrates threshold labels on the selected historical window, reports a baseline comparison, and includes walk-forward validation.
 - Briefing input collector under `src/collectors/briefing_inputs.py`.
 - Top-level coordinator under `src/agents/chairman_ai.py`.
 - Risk review step under `src/agents/risk_ai.py`.
@@ -102,6 +103,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - JSONL outcome storage under `src/storage/outcome_history.py`.
 - Weighted backtesting helpers under `src/learning/backtest.py`.
 - Learning summary helpers with period snapshots under `src/learning/feedback.py`.
+- Archived news helpers under `src/storage/news_history.py`.
 - Historical replay helpers under `src/simulation/replay.py`.
 - Automatic USD/JPY fetching.
 - Automatic Nikkei change fetching.
@@ -179,6 +181,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Default history and outcome files live outside the repository tree; env vars can override them.
 - Replay mode should not use future information. If archived news is unavailable, it should be reported as unavailable rather than guessed.
 - Replay calibration is allowed only inside the selected replay window and must be reported alongside the baseline result.
+- Walk-forward validation must use only past data for threshold selection and future data for evaluation.
 - When changing payload shape, update docs and tests together.
 
 ## Verification

@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from datetime import timezone
 from html import unescape
+from email.utils import parsedate_to_datetime
 from urllib.parse import quote_plus
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
@@ -56,10 +58,15 @@ def _fetch_latest_market_news_uncached(query: str) -> dict[str, str] | None:
     if source_element is not None and source_element.text:
         source = unescape(source_element.text.strip())
 
+    published_at = _find_text(item, "pubDate")
+    if published_at:
+        published_at = _normalize_rss_datetime(published_at)
+
     return {
         "title": unescape(title.strip()),
         "source": source,
         "url": _find_text(item, "link"),
+        "published_at": published_at,
     }
 
 
@@ -68,3 +75,14 @@ def _find_text(element: ElementTree.Element, tag: str) -> str:
     if child is None or child.text is None:
         return ""
     return child.text.strip()
+
+
+def _normalize_rss_datetime(value: str) -> str:
+    try:
+        parsed = parsedate_to_datetime(value)
+    except (TypeError, ValueError, IndexError):
+        return value
+
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()

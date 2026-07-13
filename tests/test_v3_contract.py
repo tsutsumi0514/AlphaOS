@@ -45,6 +45,7 @@ def stub_external_sources(monkeypatch):
     )
     monkeypatch.setattr("src.app.record_briefing_snapshot", lambda briefing, source: None)
     monkeypatch.setattr("src.app.record_market_outcome", lambda briefing_id, outcome: {"briefing_id": briefing_id, "outcome": outcome})
+    monkeypatch.setattr("src.app.record_news_snapshot", lambda news_item, recorded_at=None: None)
 
 
 def test_v3_briefing_contract():

@@ -17,10 +17,12 @@ from ..briefing import (
     summarize_risk_alerts,
 )
 from ..learning.backtest import (
+    CHECK_WEIGHTS,
     ReplayThresholds,
     score_briefing_against_outcome,
     summarize_backtest,
 )
+from ..storage.news_history import find_latest_news_before
 from ..watchlist import DEFAULT_WATCHLIST_SYMBOLS
 
 HistoryLoader = Callable[[str, str], list[tuple[date, float]]]
@@ -77,6 +79,7 @@ def run_replay_simulation(
     )
     calibration_summary = _score_records(window_records, thresholds)
     baseline_summary = _score_records(window_records, ReplayThresholds())
+    validation = run_walk_forward_validation(records)
     results: list[dict[str, Any]] = []
 
     for record in window_records:
@@ -108,11 +111,12 @@ def run_replay_simulation(
             "thresholds": ReplayThresholds().__dict__,
             "summary": baseline_summary,
         },
+        "validation": validation,
         "results": results,
         "notes": [
-            "NewsAI is intentionally neutral in replay mode because no archived news store exists yet."
+            "Archived news is used when a dated match exists in the local news archive."
             if calibrate
-            else "Replay mode is running without calibration."
+            else "Replay mode is running without calibration.",
         ],
     }
 
@@ -147,10 +151,102 @@ def _score_records(
     return summarize_backtest(results)
 
 
+def run_walk_forward_validation(
+    records: list[dict[str, Any]],
+    training_window: int = 20,
+    evaluation_window: int = 5,
+) -> dict[str, Any]:
+    if len(records) < training_window + evaluation_window:
+        return {
+            "mode": "walk_forward",
+            "sample_size": 0,
+            "summary": {"total": 0, "matched": 0, "checks": 0, "accuracy": 0.0},
+            "baseline": {"summary": {"total": 0, "matched": 0, "checks": 0, "accuracy": 0.0}},
+            "folds": [],
+            "windows": {
+                "training_window": training_window,
+                "evaluation_window": evaluation_window,
+            },
+        }
+
+    folds: list[dict[str, Any]] = []
+    evaluated_results: list[dict[str, Any]] = []
+    baseline_results: list[dict[str, Any]] = []
+
+    start = training_window
+    while start < len(records):
+        train_records = records[:start]
+        eval_records = records[start : min(len(records), start + evaluation_window)]
+        if not train_records or not eval_records:
+            break
+
+        thresholds = calibrate_replay_thresholds(train_records)
+        fold_results = _score_records(eval_records, thresholds)
+        baseline_fold_results = _score_records(eval_records, ReplayThresholds())
+
+        folds.append(
+            {
+                "train_range": {
+                    "start": train_records[0]["briefing_date"].isoformat(),
+                    "end": train_records[-1]["briefing_date"].isoformat(),
+                },
+                "eval_range": {
+                    "start": eval_records[0]["briefing_date"].isoformat(),
+                    "end": eval_records[-1]["outcome_date"].isoformat(),
+                },
+                "thresholds": thresholds.__dict__,
+                "summary": fold_results,
+                "baseline": baseline_fold_results,
+            }
+        )
+        evaluated_results.extend({"result": result["result"]} for result in _fold_result_items(eval_records, thresholds))
+        baseline_results.extend({"result": result["result"]} for result in _fold_result_items(eval_records, ReplayThresholds()))
+        start += evaluation_window
+
+    summary = summarize_backtest(evaluated_results)
+    baseline_summary = summarize_backtest(baseline_results)
+    return {
+        "mode": "walk_forward",
+        "sample_size": len(evaluated_results),
+        "summary": summary,
+        "baseline": {"summary": baseline_summary},
+        "folds": folds,
+        "windows": {
+            "training_window": training_window,
+            "evaluation_window": evaluation_window,
+        },
+    }
+
+
+def _fold_result_items(
+    records: list[dict[str, Any]], thresholds: ReplayThresholds
+) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    for record in records:
+        briefing = _compose_replay_briefing(record["source"], thresholds)
+        result = score_briefing_against_outcome(
+            briefing, record["outcome"], thresholds=thresholds
+        )
+        items.append(
+            {
+                "briefing_date": record["briefing_date"].isoformat(),
+                "outcome_date": record["outcome_date"].isoformat(),
+                "result": result,
+            }
+        )
+    return items
+
+
 def _compose_replay_briefing(
     source: Mapping[str, Any], thresholds: ReplayThresholds
 ) -> dict[str, Any]:
-    briefing = compose_briefing(source, learning_summary=REPLAY_LEARNING_SUMMARY)
+    replay_source = dict(source)
+    if "news_item" not in replay_source or replay_source.get("news_item") is None:
+        replay_source["news_item"] = find_latest_news_before(
+            replay_source.get("briefing_date")
+        )
+
+    briefing = compose_briefing(replay_source, learning_summary=REPLAY_LEARNING_SUMMARY)
     _apply_replay_thresholds(briefing, source, thresholds)
     briefing["decision_ai"] = build_decision_ai(briefing)
     return briefing
@@ -218,88 +314,159 @@ def _watchlist_candidates(records: list[dict[str, Any]]) -> list[float]:
 
 def _best_market_threshold(records: list[dict[str, Any]], candidates: list[float]) -> float:
     best_threshold = 0.7
-    best_accuracy = -1.0
+    best_score = -1.0
     for threshold in candidates:
-        matched = 0
-        total = 0
-        for record in records:
-            predicted = _classify_market_state(
-                record["source"].get("market_change_pct"), threshold
-            )
-            actual = _classify_market_state(
-                record["outcome"].get("market_change_pct"), threshold
-            )
-            total += 1
-            if predicted == actual:
-                matched += 1
-        accuracy = matched / total if total else 0.0
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
+        summary = _threshold_summary(records, ReplayThresholds(market_move_pct=threshold))
+        score = _threshold_score(summary)
+        if score > best_score:
+            best_score = score
             best_threshold = threshold
     return best_threshold
 
 
 def _best_fx_threshold(records: list[dict[str, Any]], candidates: list[float]) -> tuple[float, float]:
     best_pair = (155.0, 145.0)
-    best_accuracy = -1.0
+    best_score = -1.0
     for strong in candidates:
         for weak in candidates:
             if strong >= weak:
                 continue
-            matched = 0
-            total = 0
-            for record in records:
-                predicted = _classify_fx_state(
-                    record["source"].get("usd_jpy"), weak, strong
-                )
-                actual = _classify_fx_state(
-                    record["outcome"].get("usd_jpy"), weak, strong
-                )
-                total += 1
-                if predicted == actual:
-                    matched += 1
-            accuracy = matched / total if total else 0.0
-            if accuracy > best_accuracy:
-                best_accuracy = accuracy
+            summary = _threshold_summary(
+                records,
+                ReplayThresholds(fx_weak_yen=weak, fx_strong_yen=strong),
+            )
+            score = _threshold_score(summary)
+            if score > best_score:
+                best_score = score
                 best_pair = (weak, strong)
     return best_pair
 
 
 def _best_watchlist_threshold(records: list[dict[str, Any]], candidates: list[float]) -> float:
     best_threshold = 2.0
-    best_accuracy = -1.0
+    best_score = -1.0
     for threshold in candidates:
-        matched = 0
-        total = 0
-        for record in records:
-            source_items = record["source"].get("watchlist_status")
-            outcome_items = record["outcome"].get("watchlist_status")
-            if not isinstance(source_items, list) or not isinstance(outcome_items, list):
-                continue
-            outcome_by_symbol = {
-                item.get("symbol"): item
-                for item in outcome_items
-                if isinstance(item, Mapping) and isinstance(item.get("symbol"), str)
-            }
-            for item in source_items:
-                if not isinstance(item, Mapping):
-                    continue
-                symbol = item.get("symbol")
-                if not isinstance(symbol, str):
-                    continue
-                outcome_item = outcome_by_symbol.get(symbol)
-                if outcome_item is None:
-                    continue
-                predicted = _classify_watch_status(item.get("change_pct"), threshold)
-                actual = _classify_watch_status(outcome_item.get("change_pct"), threshold)
-                total += 1
-                if predicted == actual:
-                    matched += 1
-        accuracy = matched / total if total else 0.0
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
+        summary = _threshold_summary(
+            records, ReplayThresholds(watchlist_move_pct=threshold)
+        )
+        score = _threshold_score(summary)
+        if score > best_score:
+            best_score = score
             best_threshold = threshold
     return best_threshold
+
+
+def _threshold_summary(
+    records: list[dict[str, Any]], thresholds: ReplayThresholds
+) -> dict[str, Any]:
+    results: list[dict[str, Any]] = []
+    for record in records:
+        results.append({"result": _direct_score_record(record, thresholds)})
+    return summarize_backtest(results)
+
+
+def _threshold_score(summary: Mapping[str, Any]) -> float:
+    coverage = float(summary.get("coverage", 0.0))
+    weighted_accuracy = float(summary.get("weighted_accuracy", 0.0))
+    active_accuracy = float(summary.get("active_accuracy", 0.0))
+    if coverage < 0.35:
+        return coverage * 0.5 + weighted_accuracy * 0.5
+    return weighted_accuracy * 0.7 + active_accuracy * 0.3 + coverage * 0.1
+
+
+def _direct_score_record(
+    record: Mapping[str, Any], thresholds: ReplayThresholds
+) -> dict[str, Any]:
+    checks: list[dict[str, Any]] = []
+
+    source = record["source"]
+    outcome = record["outcome"]
+
+    _append_direct_check(
+        checks,
+        "market_state",
+        _classify_market_state(source.get("market_change_pct"), thresholds.market_move_pct),
+        _classify_market_state(outcome.get("market_change_pct"), thresholds.market_move_pct),
+        CHECK_WEIGHTS["market_state"],
+    )
+    _append_direct_check(
+        checks,
+        "fx_state",
+        _classify_fx_state(source.get("usd_jpy"), thresholds.fx_weak_yen, thresholds.fx_strong_yen),
+        _classify_fx_state(outcome.get("usd_jpy"), thresholds.fx_weak_yen, thresholds.fx_strong_yen),
+        CHECK_WEIGHTS["fx_state"],
+    )
+
+    source_items = source.get("watchlist_status")
+    outcome_items = outcome.get("watchlist_status")
+    if isinstance(source_items, list) and isinstance(outcome_items, list):
+        outcome_by_symbol = {
+            item.get("symbol"): item
+            for item in outcome_items
+            if isinstance(item, Mapping) and isinstance(item.get("symbol"), str)
+        }
+        for item in source_items:
+            if not isinstance(item, Mapping):
+                continue
+            symbol = item.get("symbol")
+            if not isinstance(symbol, str):
+                continue
+            outcome_item = outcome_by_symbol.get(symbol)
+            if outcome_item is None:
+                continue
+            predicted = _classify_watch_status(item.get("change_pct"), thresholds.watchlist_move_pct)
+            actual = _classify_watch_status(outcome_item.get("change_pct"), thresholds.watchlist_move_pct)
+            _append_direct_check(
+                checks,
+                f"watchlist:{symbol}",
+                predicted,
+                actual,
+                CHECK_WEIGHTS["watchlist"],
+            )
+
+    matched = sum(1 for check in checks if check["matched"])
+    total = len(checks)
+    active_checks = sum(1 for check in checks if check["active"])
+    active_matched = sum(1 for check in checks if check["active"] and check["matched"])
+    weighted_matched = sum(check["weight"] for check in checks if check["matched"])
+    weighted_total = sum(check["weight"] for check in checks)
+    return {
+        "matched": matched,
+        "total": total,
+        "accuracy": matched / total if total else 0.0,
+        "active_checks": active_checks,
+        "active_matched": active_matched,
+        "coverage": active_checks / total if total else 0.0,
+        "active_accuracy": active_matched / active_checks if active_checks else 0.0,
+        "weighted_matched": weighted_matched,
+        "weighted_total": weighted_total,
+        "weighted_accuracy": weighted_matched / weighted_total if weighted_total else 0.0,
+    }
+
+
+def _append_direct_check(
+    checks: list[dict[str, Any]], label: str, predicted: Any, actual: Any, weight: float
+) -> None:
+    checks.append(
+        {
+            "label": label,
+            "predicted": predicted,
+            "actual": actual,
+            "matched": predicted == actual,
+            "active": _is_active_prediction(label, predicted),
+            "weight": weight,
+        }
+    )
+
+
+def _is_active_prediction(label: str, predicted: Any) -> bool:
+    if label == "market_state":
+        return predicted in {"bullish", "bearish"}
+    if label == "fx_state":
+        return predicted in {"weak yen", "strong yen"}
+    if label.startswith("watchlist:"):
+        return predicted in {"strong", "weak"}
+    return predicted not in {None, "unknown", "neutral", "steady"}
 
 
 def _classify_market_state(market_change_pct: Any, threshold: float) -> str:
@@ -380,6 +547,7 @@ def _build_records(
         previous_date = common_dates[index - 1]
 
         source = {
+            "briefing_date": briefing_date,
             "market_change_pct": _percent_change(
                 benchmark_map.get(briefing_date), benchmark_map.get(previous_date)
             ),

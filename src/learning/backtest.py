@@ -64,6 +64,10 @@ def score_briefing_against_outcome(
     matched = sum(1 for check in checks if check["matched"])
     total = len(checks)
     accuracy = matched / total if total else 0.0
+    active_checks = sum(1 for check in checks if check["active"])
+    active_matched = sum(1 for check in checks if check["active"] and check["matched"])
+    coverage = active_checks / total if total else 0.0
+    active_accuracy = active_matched / active_checks if active_checks else 0.0
     weighted_matched = sum(check["weight"] for check in checks if check["matched"])
     weighted_total = sum(check["weight"] for check in checks)
     weighted_accuracy = weighted_matched / weighted_total if weighted_total else 0.0
@@ -72,6 +76,10 @@ def score_briefing_against_outcome(
         "matched": matched,
         "total": total,
         "accuracy": accuracy,
+        "active_checks": active_checks,
+        "active_matched": active_matched,
+        "coverage": coverage,
+        "active_accuracy": active_accuracy,
         "weighted_matched": weighted_matched,
         "weighted_total": weighted_total,
         "weighted_accuracy": weighted_accuracy,
@@ -118,6 +126,10 @@ def summarize_backtest(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             "total": 0,
             "matched": 0,
             "accuracy": 0.0,
+            "active_checks": 0,
+            "active_matched": 0,
+            "coverage": 0.0,
+            "active_accuracy": 0.0,
             "weighted_matched": 0.0,
             "weighted_total": 0.0,
             "weighted_accuracy": 0.0,
@@ -125,6 +137,8 @@ def summarize_backtest(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
 
     matched = 0
     checks = 0
+    active_checks = 0
+    active_matched = 0
     weighted_matched = 0.0
     weighted_total = 0.0
     for result in results:
@@ -133,16 +147,24 @@ def summarize_backtest(results: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
             continue
         matched += int(payload.get("matched", 0))
         checks += int(payload.get("total", 0))
+        active_checks += int(payload.get("active_checks", 0))
+        active_matched += int(payload.get("active_matched", 0))
         weighted_matched += float(payload.get("weighted_matched", payload.get("matched", 0)))
         weighted_total += float(payload.get("weighted_total", payload.get("total", 0)))
 
     accuracy = matched / checks if checks else 0.0
+    coverage = active_checks / checks if checks else 0.0
+    active_accuracy = active_matched / active_checks if active_checks else 0.0
     weighted_accuracy = weighted_matched / weighted_total if weighted_total else 0.0
     return {
         "total": total,
         "matched": matched,
         "checks": checks,
         "accuracy": accuracy,
+        "active_checks": active_checks,
+        "active_matched": active_matched,
+        "coverage": coverage,
+        "active_accuracy": active_accuracy,
         "weighted_matched": weighted_matched,
         "weighted_total": weighted_total,
         "weighted_accuracy": weighted_accuracy,
@@ -158,6 +180,7 @@ def _append_check(
             "predicted": predicted,
             "actual": actual,
             "matched": predicted == actual,
+            "active": _is_active_prediction(label, predicted),
             "weight": weight,
         }
     )
@@ -205,6 +228,7 @@ def _score_watchlist(
                 "predicted": predicted_status,
                 "actual": actual_status,
                 "matched": predicted_status == actual_status,
+                "active": _is_active_prediction(f"watchlist:{symbol}", predicted_status),
                 "weight": CHECK_WEIGHTS["watchlist"],
             }
         )
@@ -240,3 +264,13 @@ def _classify_watch_status(change_pct: Any, threshold: float) -> str:
     if change_pct <= -threshold:
         return "weak"
     return "steady"
+
+
+def _is_active_prediction(label: str, predicted: Any) -> bool:
+    if label == "market_state":
+        return predicted in {"bullish", "bearish"}
+    if label == "fx_state":
+        return predicted in {"weak yen", "strong yen"}
+    if label.startswith("watchlist:"):
+        return predicted in {"strong", "weak"}
+    return predicted not in {None, "unknown", "neutral", "steady"}

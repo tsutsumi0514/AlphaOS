@@ -3,7 +3,7 @@ from datetime import date
 from src.simulation.replay import run_replay_simulation
 
 
-def test_run_replay_simulation_scores_historical_pairs():
+def test_run_replay_simulation_scores_historical_pairs(monkeypatch):
     series = {
         "^N225": [
             (date(2026, 7, 8), 40000.0),
@@ -40,6 +40,16 @@ def test_run_replay_simulation_scores_historical_pairs():
     def loader(symbol: str, period: str):
         return series[symbol]
 
+    def archived_news(target_date):
+        return {
+            "title": f"news for {target_date}",
+            "source": "Archive",
+            "url": "https://example.com/archive",
+            "published_at": "2026-07-09T00:00:00+00:00",
+        }
+
+    monkeypatch.setattr("src.simulation.replay.find_latest_news_before", archived_news)
+
     result = run_replay_simulation(
         lookback_trading_days=2,
         symbols=("7203.T", "6758.T", "9984.T"),
@@ -54,3 +64,5 @@ def test_run_replay_simulation_scores_historical_pairs():
     assert result["calibration"]["summary"]["total"] == 2
     assert result["baseline"]["summary"]["total"] == 2
     assert result["results"][0]["briefing"]["decision_ai"]["agent"] == "ChairmanAI"
+    assert result["results"][0]["briefing"]["news_item"]["title"].startswith("news for")
+    assert result["validation"]["mode"] == "walk_forward"
