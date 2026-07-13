@@ -21,6 +21,7 @@ Current collectors fetch external inputs:
 - `src/market.py` for Nikkei change
 - `src/watchlist.py` for watched symbols
 - `src/news.py` for latest market news
+- `src/collectors/briefing_inputs.py` for briefing input orchestration
 
 ### Cache Layer
 - `src/cache.py` provides a short TTL cache to avoid repeated fetches.
@@ -28,6 +29,18 @@ Current collectors fetch external inputs:
 ### Evidence Layer
 - `src/evidence.py` defines structured evidence objects.
 - Evidence is used to preserve the proof behind a signal instead of flattening everything into labels.
+
+### Analysis Layer
+- `src/analyzers/briefing_signals.py` derives risk alerts, reasons, evidence, and confidence.
+- This keeps `src/briefing.py` smaller while preserving the v1 output contract.
+
+### Agent Layer
+- `src/agents/chairman_ai.py` coordinates the top-level briefing assembly.
+- `src/agents/risk_ai.py` owns the risk review step.
+
+### Storage and Learning Layer
+- `src/storage/briefing_history.py` stores briefing snapshots in JSONL.
+- `src/learning/backtest.py` scores briefings against later outcomes and aggregates results.
 
 ### Briefing Orchestration Layer
 - `src/briefing.py` merges signals into a compact briefing payload.
@@ -45,6 +58,7 @@ Current collectors fetch external inputs:
 
 ### API Layer
 - `src/app.py` exposes the `/briefing` endpoint.
+- `src/app.py` also exposes `/` as the simple Web presenter.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 
@@ -65,6 +79,12 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 
 ## Implemented Features
 - FastAPI `/briefing` endpoint.
+- Simple HTML `/` presenter.
+- Briefing input collector under `src/collectors/briefing_inputs.py`.
+- Top-level coordinator under `src/agents/chairman_ai.py`.
+- Risk review step under `src/agents/risk_ai.py`.
+- JSONL history storage under `src/storage/briefing_history.py`.
+- Minimal backtesting helpers under `src/learning/backtest.py`.
 - Automatic USD/JPY fetching.
 - Automatic Nikkei change fetching.
 - Automatic watchlist fetching for multiple symbols.
@@ -83,11 +103,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 
 ## Not Yet Implemented
 - LINE integration.
-- Web UI.
 - Voice or wearable presenters.
-- Persistent storage for user history.
-- Backtesting.
-- Learning loop from historical predictions and outcomes.
 - User-specific rule settings.
 - Multi-user support.
 - Real `ChairmanAI`, `RiskAI`, `NewsAI`, or `MacroAI` modules.
@@ -95,6 +111,9 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 ## Important Decisions
 - The project is a decision-support OS, not an auto-trading system.
 - `briefing.py` is intentionally small in v1, but it now preserves structured evidence.
+- `src/analyzers/briefing_signals.py` holds the first dedicated analysis helpers.
+- `src/collectors/briefing_inputs.py` and `src/agents/chairman_ai.py` establish the first explicit collector/agent split.
+- `src/storage/briefing_history.py` and `src/learning/backtest.py` establish the first persistence and learning loop.
 - The architecture must allow future separation into collectors, analyzers, agents, and presenters.
 - Evidence should be first-class so that later AI coordination and learning are possible.
 - LINE should not be the only UI target; the output must be presenter-friendly.

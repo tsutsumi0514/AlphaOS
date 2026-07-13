@@ -131,6 +131,30 @@ def test_build_briefing_includes_news_in_key_changes():
     assert "News: 日経平均、寄り付き後に上昇 (Google News)." in briefing["key_changes"]
 
 
+def test_build_briefing_serializes_evidence_objects():
+    briefing = build_briefing(
+        {
+            "evidence": [
+                {
+                    "source": "market",
+                    "label": "Nikkei",
+                    "value": 1.2,
+                    "note": "bullish",
+                }
+            ]
+        }
+    )
+
+    assert briefing["evidence"] == [
+        {
+            "source": "market",
+            "label": "Nikkei",
+            "value": 1.2,
+            "note": "bullish",
+        }
+    ]
+
+
 def test_build_briefing_uses_default_headline_without_signals():
     briefing = build_briefing()
 

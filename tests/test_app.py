@@ -7,15 +7,30 @@ client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def stub_latest_news(monkeypatch):
+def stub_external_sources(monkeypatch):
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", lambda: 156.2)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", lambda: 1.2)
     monkeypatch.setattr(
-        "src.app.fetch_latest_market_news",
+        "src.collectors.briefing_inputs.fetch_watchlist_status",
+        lambda symbols: [
+            {
+                "symbol": symbol,
+                "price": 2810.0,
+                "change_pct": 2.4,
+                "status": "strong",
+            }
+            for symbol in symbols
+        ],
+    )
+    monkeypatch.setattr(
+        "src.collectors.briefing_inputs.fetch_latest_market_news",
         lambda: {
             "title": "日経平均、寄り付き後に上昇",
             "source": "Google News",
             "url": "https://example.com/news",
         },
     )
+    monkeypatch.setattr("src.app.record_briefing_snapshot", lambda briefing, source: None)
 
 
 def test_briefing_endpoint_returns_expected_keys():
@@ -53,7 +68,7 @@ def test_briefing_endpoint_derives_market_state_from_change_pct():
 
 
 def test_briefing_endpoint_uses_fetched_usd_jpy(monkeypatch):
-    monkeypatch.setattr("src.app.fetch_usd_jpy_rate", lambda: 144.8)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", lambda: 144.8)
 
     response = client.get("/briefing")
 
@@ -63,7 +78,7 @@ def test_briefing_endpoint_uses_fetched_usd_jpy(monkeypatch):
 
 
 def test_briefing_endpoint_uses_fetched_market_change_pct(monkeypatch):
-    monkeypatch.setattr("src.app.fetch_nikkei_change_pct", lambda: -1.1)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", lambda: -1.1)
 
     response = client.get("/briefing")
 
@@ -74,7 +89,7 @@ def test_briefing_endpoint_uses_fetched_market_change_pct(monkeypatch):
 
 def test_briefing_endpoint_uses_fetched_watchlist_status(monkeypatch):
     monkeypatch.setattr(
-        "src.app.fetch_watchlist_status",
+        "src.collectors.briefing_inputs.fetch_watchlist_status",
         lambda symbols: [
             {
                 "symbol": symbol,
@@ -106,7 +121,7 @@ def test_briefing_endpoint_uses_fetched_news():
 
 def test_briefing_endpoint_accepts_watchlist_symbol(monkeypatch):
     monkeypatch.setattr(
-        "src.app.fetch_watchlist_status",
+        "src.collectors.briefing_inputs.fetch_watchlist_status",
         lambda symbols: [
             {
                 "symbol": symbols[0],
@@ -127,10 +142,10 @@ def test_briefing_endpoint_accepts_watchlist_symbol(monkeypatch):
 
 
 def test_briefing_endpoint_generates_risk_alerts(monkeypatch):
-    monkeypatch.setattr("src.app.fetch_usd_jpy_rate", lambda: 144.0)
-    monkeypatch.setattr("src.app.fetch_nikkei_change_pct", lambda: -1.2)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", lambda: 144.0)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", lambda: -1.2)
     monkeypatch.setattr(
-        "src.app.fetch_watchlist_status",
+        "src.collectors.briefing_inputs.fetch_watchlist_status",
         lambda symbols: [
             {
                 "symbol": symbols[0],
@@ -168,3 +183,34 @@ def test_briefing_endpoint_generates_risk_alerts(monkeypatch):
     assert "9984.T is rising strongly versus the previous close." in data["reasons"]
     assert data["evidence"]
     assert data["confidence"] == "high"
+
+
+def test_homepage_returns_html_briefing():
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AlphaOS Morning Briefing" in response.text
+    assert "Risk Alerts" in response.text
+    assert "Reasons" in response.text
+    assert "Evidence" in response.text
+    assert "Confidence" in response.text
+
+
+def test_homepage_survives_fetch_failures(monkeypatch):
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", lambda: (_ for _ in ()).throw(RuntimeError("fx down")))
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", lambda: (_ for _ in ()).throw(RuntimeError("market down")))
+    monkeypatch.setattr(
+        "src.collectors.briefing_inputs.fetch_watchlist_status",
+        lambda symbols: (_ for _ in ()).throw(RuntimeError("watchlist down")),
+    )
+    monkeypatch.setattr(
+        "src.collectors.briefing_inputs.fetch_latest_market_news",
+        lambda: (_ for _ in ()).throw(RuntimeError("news down")),
+    )
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Market overview is not ready yet." in response.text
+    assert "None" in response.text

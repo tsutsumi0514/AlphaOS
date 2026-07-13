@@ -33,12 +33,23 @@
 ## Run
 - Start the app:
   - `python -m src.main`
+- Open the web UI:
+  - `http://127.0.0.1:8000/`
+- Use the JSON API:
+  - `http://127.0.0.1:8000/briefing`
 
 ## Test
 - Run tests:
   - `pytest`
 ## Current Implementation
-- `src/app.py`: FastAPI entrypoint
+- `src/app.py`: FastAPI entrypoint for `/` and `/briefing`
+- `src/collectors/briefing_inputs.py`: briefing input collection
+- `src/agents/chairman_ai.py`: briefing orchestration
+- `src/agents/risk_ai.py`: risk review step
 - `src/briefing.py`: Briefing data builder
+- `src/analyzers/briefing_signals.py`: Risk and evidence helpers
+- `src/storage/briefing_history.py`: JSONL briefing history
+- `src/learning/backtest.py`: Simple scoring and backtest helpers
 - `src/evidence.py`: Structured evidence objects
-- `tests/test_app.py`: API test
+- `src/presenters/web.py`: Simple HTML presenter
+- `tests/test_app.py`: API and web UI tests
