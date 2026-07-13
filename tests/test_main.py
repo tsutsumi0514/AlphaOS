@@ -15,3 +15,9 @@ def test_build_briefing_derives_fx_state_from_usd_jpy():
     briefing = build_briefing({"usd_jpy": 156.2})
 
     assert briefing["fx_state"] == "weak yen"
+
+
+def test_build_briefing_derives_market_state_from_change_pct():
+    briefing = build_briefing({"market_change_pct": 1.2})
+
+    assert briefing["market_state"] == "bullish"

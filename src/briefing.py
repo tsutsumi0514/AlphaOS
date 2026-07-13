@@ -14,6 +14,17 @@ DEFAULT_BRIEFING: Briefing = {
 }
 
 
+def derive_market_state(market_change_pct: float | int | None) -> str:
+    """Map a market move to a simple market state label."""
+    if market_change_pct is None:
+        return "unknown"
+    if market_change_pct >= 0.7:
+        return "bullish"
+    if market_change_pct <= -0.7:
+        return "bearish"
+    return "neutral"
+
+
 def derive_fx_state(usd_jpy: float | int | None) -> str:
     """Map a USD/JPY rate to a simple FX state label."""
     if usd_jpy is None:
@@ -37,6 +48,9 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
 
     if source is None:
         return briefing
+
+    if "market_change_pct" in source:
+        briefing["market_state"] = derive_market_state(source["market_change_pct"])
 
     if "usd_jpy" in source:
         briefing["fx_state"] = derive_fx_state(source["usd_jpy"])
