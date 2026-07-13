@@ -55,58 +55,15 @@ def summarize_key_changes(briefing: Briefing) -> list[str]:
     elif fx_state == "strong yen":
         changes.append("Yen strength may pressure exporter sentiment.")
 
-    watchlist_status = briefing.get("watchlist_status")
-    if isinstance(watchlist_status, list) and watchlist_status:
-        first = watchlist_status[0]
-        if isinstance(first, Mapping):
-            symbol = first.get("symbol", "Watchlist")
-            status = first.get("status")
-            if status == "strong":
-                changes.append(f"{symbol} is showing strong watchlist momentum.")
-            elif status == "weak":
-                changes.append(f"{symbol} is weakening on the watchlist.")
+    for item in _watchlist_items(briefing):
+        symbol = item.get("symbol", "Watchlist")
+        status = item.get("status")
+        if status == "strong":
+            changes.append(f"{symbol} is showing strong watchlist momentum.")
+        elif status == "weak":
+            changes.append(f"{symbol} is weakening on the watchlist.")
 
     return changes
-
-
-def summarize_headline(briefing: Briefing) -> str:
-    """Build a one-line headline for a fast morning read."""
-    market_state = briefing.get("market_state")
-    fx_state = briefing.get("fx_state")
-    watchlist_status = briefing.get("watchlist_status")
-
-    headline_parts: list[str] = []
-
-    if market_state == "bullish":
-        headline_parts.append("Nikkei is firm")
-    elif market_state == "bearish":
-        headline_parts.append("Nikkei is under pressure")
-    elif market_state == "neutral":
-        headline_parts.append("Nikkei is steady")
-
-    if fx_state == "weak yen":
-        headline_parts.append("yen is weak")
-    elif fx_state == "strong yen":
-        headline_parts.append("yen is strong")
-    elif fx_state == "neutral":
-        headline_parts.append("FX is stable")
-
-    if isinstance(watchlist_status, list) and watchlist_status:
-        first = watchlist_status[0]
-        if isinstance(first, Mapping):
-            symbol = first.get("symbol", "Watchlist")
-            status = first.get("status")
-            if status == "strong":
-                headline_parts.append(f"{symbol} is strong")
-            elif status == "weak":
-                headline_parts.append(f"{symbol} is weak")
-            elif status == "steady":
-                headline_parts.append(f"{symbol} is steady")
-
-    if headline_parts:
-        return ". ".join(headline_parts) + "."
-
-    return DEFAULT_BRIEFING["headline"]
 
 
 def summarize_risk_alerts(briefing: Briefing) -> list[str]:
@@ -115,7 +72,6 @@ def summarize_risk_alerts(briefing: Briefing) -> list[str]:
 
     market_state = briefing.get("market_state")
     fx_state = briefing.get("fx_state")
-    watchlist_status = briefing.get("watchlist_status")
 
     if market_state == "bearish":
         alerts.append("Market tone is bearish. Keep new positions small.")
@@ -123,13 +79,11 @@ def summarize_risk_alerts(briefing: Briefing) -> list[str]:
     if fx_state == "strong yen":
         alerts.append("Strong yen may pressure export-related names.")
 
-    if isinstance(watchlist_status, list) and watchlist_status:
-        first = watchlist_status[0]
-        if isinstance(first, Mapping):
-            symbol = first.get("symbol", "Watchlist")
-            status = first.get("status")
-            if status == "weak":
-                alerts.append(f"{symbol} is weakening. Review entry timing carefully.")
+    for item in _watchlist_items(briefing):
+        symbol = item.get("symbol", "Watchlist")
+        status = item.get("status")
+        if status == "weak":
+            alerts.append(f"{symbol} is weakening. Review entry timing carefully.")
 
     if market_state == "bearish" and fx_state == "strong yen":
         alerts.append("Both market and currency conditions are risk-off.")
@@ -153,20 +107,41 @@ def summarize_reasons(briefing: Briefing) -> list[str]:
     elif fx_state == "strong yen":
         reasons.append("USD/JPY is in a strong-yen range.")
 
-    watchlist_status = briefing.get("watchlist_status")
-    if isinstance(watchlist_status, list) and watchlist_status:
-        first = watchlist_status[0]
-        if isinstance(first, Mapping):
-            symbol = first.get("symbol", "Watchlist")
-            status = first.get("status")
-            if status == "strong":
-                reasons.append(f"{symbol} is rising strongly versus the previous close.")
-            elif status == "weak":
-                reasons.append(f"{symbol} is weakening versus the previous close.")
-            elif status == "steady":
-                reasons.append(f"{symbol} is moving within a normal daily range.")
+    for item in _watchlist_items(briefing):
+        symbol = item.get("symbol", "Watchlist")
+        status = item.get("status")
+        if status == "strong":
+            reasons.append(f"{symbol} is rising strongly versus the previous close.")
+        elif status == "weak":
+            reasons.append(f"{symbol} is weakening versus the previous close.")
+        elif status == "steady":
+            reasons.append(f"{symbol} is moving within a normal daily range.")
 
     return reasons
+
+
+def _watchlist_items(briefing: Briefing) -> list[Mapping[str, Any]]:
+    watchlist_status = briefing.get("watchlist_status")
+    if not isinstance(watchlist_status, list):
+        return []
+
+    items: list[Mapping[str, Any]] = []
+    for item in watchlist_status:
+        if isinstance(item, Mapping):
+            items.append(item)
+    return items
+
+
+def _primary_watchlist_item(briefing: Briefing) -> Mapping[str, Any] | None:
+    items = _watchlist_items(briefing)
+    if not items:
+        return None
+
+    for item in items:
+        if item.get("status") in {"strong", "weak"}:
+            return item
+
+    return items[0]
 
 
 def derive_confidence(briefing: Briefing) -> str:
@@ -178,8 +153,7 @@ def derive_confidence(briefing: Briefing) -> str:
     if briefing.get("fx_state") != "unknown":
         score += 1
 
-    watchlist_status = briefing.get("watchlist_status")
-    if isinstance(watchlist_status, list) and watchlist_status:
+    if _watchlist_items(briefing):
         score += 1
 
     if score >= 3:
@@ -187,6 +161,44 @@ def derive_confidence(briefing: Briefing) -> str:
     if score == 2:
         return "medium"
     return "low"
+
+
+def summarize_headline(briefing: Briefing) -> str:
+    """Build a one-line headline for a fast morning read."""
+    market_state = briefing.get("market_state")
+    fx_state = briefing.get("fx_state")
+    watchlist_item = _primary_watchlist_item(briefing)
+
+    headline_parts: list[str] = []
+
+    if market_state == "bullish":
+        headline_parts.append("Nikkei is firm")
+    elif market_state == "bearish":
+        headline_parts.append("Nikkei is under pressure")
+    elif market_state == "neutral":
+        headline_parts.append("Nikkei is steady")
+
+    if fx_state == "weak yen":
+        headline_parts.append("yen is weak")
+    elif fx_state == "strong yen":
+        headline_parts.append("yen is strong")
+    elif fx_state == "neutral":
+        headline_parts.append("FX is stable")
+
+    if watchlist_item is not None:
+        symbol = watchlist_item.get("symbol", "Watchlist")
+        status = watchlist_item.get("status")
+        if status == "strong":
+            headline_parts.append(f"{symbol} is strong")
+        elif status == "weak":
+            headline_parts.append(f"{symbol} is weak")
+        elif status == "steady":
+            headline_parts.append(f"{symbol} is steady")
+
+    if headline_parts:
+        return ". ".join(headline_parts) + "."
+
+    return DEFAULT_BRIEFING["headline"]
 
 
 def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:

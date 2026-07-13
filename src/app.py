@@ -3,9 +3,22 @@ from fastapi import FastAPI, Query
 from .briefing import build_briefing
 from .fx import fetch_usd_jpy_rate
 from .market import fetch_nikkei_change_pct
-from .watchlist import DEFAULT_WATCHLIST_SYMBOL, fetch_watchlist_status
+from .watchlist import DEFAULT_WATCHLIST_SYMBOLS, fetch_watchlist_status
 
 app = FastAPI(title="AlphaOS")
+
+
+def _parse_watchlist_symbols(
+    watchlist_symbols: str | None, watchlist_symbol: str | None
+) -> list[str]:
+    if watchlist_symbols:
+        symbols = [symbol.strip() for symbol in watchlist_symbols.split(",")]
+        return [symbol for symbol in symbols if symbol]
+
+    if watchlist_symbol:
+        return [watchlist_symbol.strip()]
+
+    return list(DEFAULT_WATCHLIST_SYMBOLS)
 
 
 @app.get("/briefing")
@@ -14,15 +27,21 @@ def get_briefing(
     market_change_pct: float | None = Query(
         default=None, description="Nikkei 225 day-over-day percent change"
     ),
-    watchlist_symbol: str = Query(
-        default=DEFAULT_WATCHLIST_SYMBOL, description="Single watchlist symbol"
+    watchlist_symbols: str | None = Query(
+        default=None, description="Comma-separated watchlist symbols"
+    ),
+    watchlist_symbol: str | None = Query(
+        default=None, description="Single watchlist symbol override"
     ),
 ):
     if usd_jpy is None:
         usd_jpy = fetch_usd_jpy_rate()
     if market_change_pct is None:
         market_change_pct = fetch_nikkei_change_pct()
-    watchlist_status = fetch_watchlist_status(watchlist_symbol)
+    requested_watchlist_symbols = _parse_watchlist_symbols(
+        watchlist_symbols, watchlist_symbol
+    )
+    watchlist_status = fetch_watchlist_status(requested_watchlist_symbols)
 
     source: dict[str, float | list[dict[str, object]]] = {}
     if usd_jpy is not None:

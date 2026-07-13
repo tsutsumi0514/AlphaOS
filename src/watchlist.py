@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
 
 from .cache import get_cached_value
 
-DEFAULT_WATCHLIST_SYMBOL = "7203.T"
+DEFAULT_WATCHLIST_SYMBOLS = ("7203.T", "6758.T", "9984.T")
+DEFAULT_WATCHLIST_SYMBOL = DEFAULT_WATCHLIST_SYMBOLS[0]
 _WATCHLIST_CACHE_TTL_SECONDS = 300
 
 
@@ -21,14 +23,21 @@ def derive_watch_status(change_pct: float | None) -> str:
     return "steady"
 
 
-def fetch_watchlist_status(symbol: str = DEFAULT_WATCHLIST_SYMBOL) -> list[dict[str, Any]]:
-    """Fetch a single-symbol watchlist snapshot."""
-    cache_key = f"watchlist.{symbol}"
-    return get_cached_value(
-        cache_key,
-        lambda: _fetch_watchlist_status_uncached(symbol),
-        _WATCHLIST_CACHE_TTL_SECONDS,
-    )
+def fetch_watchlist_status(symbols: Sequence[str] = DEFAULT_WATCHLIST_SYMBOLS) -> list[dict[str, Any]]:
+    """Fetch watchlist snapshots for one or more symbols."""
+    watchlist: list[dict[str, Any]] = []
+
+    for symbol in symbols:
+        cache_key = f"watchlist.{symbol}"
+        snapshot = get_cached_value(
+            cache_key,
+            lambda symbol=symbol: _fetch_watchlist_status_uncached(symbol),
+            _WATCHLIST_CACHE_TTL_SECONDS,
+        )
+        if snapshot:
+            watchlist.extend(snapshot)
+
+    return watchlist
 
 
 def _fetch_watchlist_status_uncached(symbol: str) -> list[dict[str, Any]]:

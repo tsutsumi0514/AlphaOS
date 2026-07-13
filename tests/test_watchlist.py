@@ -1,4 +1,4 @@
-from src.watchlist import derive_watch_status
+from src.watchlist import derive_watch_status, fetch_watchlist_status
 
 
 def test_derive_watch_status_returns_strong_for_large_gain():
@@ -11,3 +11,29 @@ def test_derive_watch_status_returns_weak_for_large_loss():
 
 def test_derive_watch_status_returns_steady_for_small_move():
     assert derive_watch_status(0.6) == "steady"
+
+
+def test_fetch_watchlist_status_returns_multiple_symbols(monkeypatch):
+    seen_keys: list[str] = []
+
+    def fake_get_cached_value(key, producer, ttl_seconds):
+        seen_keys.append(key)
+        return producer()
+
+    def fake_fetch(symbol):
+        return [
+            {
+                "symbol": symbol,
+                "price": 100.0,
+                "change_pct": 1.0,
+                "status": "steady",
+            }
+        ]
+
+    monkeypatch.setattr("src.watchlist.get_cached_value", fake_get_cached_value)
+    monkeypatch.setattr("src.watchlist._fetch_watchlist_status_uncached", fake_fetch)
+
+    statuses = fetch_watchlist_status(["7203.T", "6758.T"])
+
+    assert [item["symbol"] for item in statuses] == ["7203.T", "6758.T"]
+    assert seen_keys == ["watchlist.7203.T", "watchlist.6758.T"]

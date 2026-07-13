@@ -6,7 +6,7 @@ Provide the first real input path for AlphaOS briefing generation.
 ## First Source
 - `usd_jpy`: USD/JPY rate
 - `market_change_pct`: Nikkei 225 day-over-day percent change
-- `watchlist_status`: single-symbol watchlist snapshot
+- `watchlist_status`: small multi-symbol watchlist snapshot
 
 ## Derived Output
 - `fx_state`
@@ -28,3 +28,8 @@ Provide the first real input path for AlphaOS briefing generation.
 - Nikkei 225
 - watchlist symbols
 - news headlines
+
+## Watchlist Defaults
+- Use a short list of core symbols first.
+- Prefer large, liquid names that are meaningful for a daily scan.
+- Keep the initial list small enough to read in a few seconds.
