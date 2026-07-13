@@ -1,5 +1,6 @@
 from src.briefing import build_briefing
 
+
 def test_build_briefing_returns_expected_keys():
     briefing = build_briefing()
 
