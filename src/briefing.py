@@ -11,6 +11,8 @@ DEFAULT_BRIEFING: Briefing = {
     "watchlist_status": [],
     "risk_alerts": [],
     "key_changes": [],
+    "reasons": [],
+    "confidence": "low",
 }
 
 
@@ -94,6 +96,58 @@ def summarize_risk_alerts(briefing: Briefing) -> list[str]:
     return alerts
 
 
+def summarize_reasons(briefing: Briefing) -> list[str]:
+    """Build short reason statements for the current briefing."""
+    reasons: list[str] = []
+
+    market_state = briefing.get("market_state")
+    if market_state == "bullish":
+        reasons.append("Nikkei day-over-day change is positive.")
+    elif market_state == "bearish":
+        reasons.append("Nikkei day-over-day change is negative.")
+
+    fx_state = briefing.get("fx_state")
+    if fx_state == "weak yen":
+        reasons.append("USD/JPY is in a weak-yen range.")
+    elif fx_state == "strong yen":
+        reasons.append("USD/JPY is in a strong-yen range.")
+
+    watchlist_status = briefing.get("watchlist_status")
+    if isinstance(watchlist_status, list) and watchlist_status:
+        first = watchlist_status[0]
+        if isinstance(first, Mapping):
+            symbol = first.get("symbol", "Watchlist")
+            status = first.get("status")
+            if status == "strong":
+                reasons.append(f"{symbol} is rising strongly versus the previous close.")
+            elif status == "weak":
+                reasons.append(f"{symbol} is weakening versus the previous close.")
+            elif status == "steady":
+                reasons.append(f"{symbol} is moving within a normal daily range.")
+
+    return reasons
+
+
+def derive_confidence(briefing: Briefing) -> str:
+    """Estimate confidence from how many data-backed signals are available."""
+    score = 0
+
+    if briefing.get("market_state") != "unknown":
+        score += 1
+    if briefing.get("fx_state") != "unknown":
+        score += 1
+
+    watchlist_status = briefing.get("watchlist_status")
+    if isinstance(watchlist_status, list) and watchlist_status:
+        score += 1
+
+    if score >= 3:
+        return "high"
+    if score == 2:
+        return "medium"
+    return "low"
+
+
 def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
     """Return a briefing payload, optionally merging values from source."""
     briefing: Briefing = {
@@ -102,6 +156,8 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         "watchlist_status": list(DEFAULT_BRIEFING["watchlist_status"]),
         "risk_alerts": list(DEFAULT_BRIEFING["risk_alerts"]),
         "key_changes": list(DEFAULT_BRIEFING["key_changes"]),
+        "reasons": list(DEFAULT_BRIEFING["reasons"]),
+        "confidence": DEFAULT_BRIEFING["confidence"],
     }
 
     if source is None:
@@ -123,5 +179,11 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
 
     if not briefing["key_changes"]:
         briefing["key_changes"] = summarize_key_changes(briefing)
+
+    if not briefing["reasons"]:
+        briefing["reasons"] = summarize_reasons(briefing)
+
+    if briefing["confidence"] == "low":
+        briefing["confidence"] = derive_confidence(briefing)
 
     return briefing

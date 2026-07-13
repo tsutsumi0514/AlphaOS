@@ -9,6 +9,8 @@ Show the minimum market information needed to understand the current situation i
 - `watchlist_status`: Status of watched symbols and themes.
 - `risk_alerts`: Short warnings that need attention.
 - `key_changes`: Important changes since the previous check.
+- `reasons`: Short statements explaining why the current view was produced.
+- `confidence`: A simple confidence label, such as low, medium, or high.
 
 ## Principles
 - Keep the output short.
@@ -24,3 +26,8 @@ Show the minimum market information needed to understand the current situation i
 - Generate short risk-first warnings when `risk_alerts` is not explicitly provided.
 - Prioritize bearish market tone, exporter risk from strong yen, and weakness in the first watchlist symbol.
 - Keep alerts actionable and concise.
+
+## Reason And Confidence Rules
+- Generate short reasons from the current market, FX, and watchlist signals.
+- Estimate confidence from how many data-backed signals are available.
+- Prefer simple confidence labels over numeric scores.

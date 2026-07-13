@@ -64,3 +64,25 @@ def test_build_briefing_generates_risk_alerts_from_states():
     assert "Strong yen may pressure export-related names." in briefing["risk_alerts"]
     assert "7203.T is weakening. Review entry timing carefully." in briefing["risk_alerts"]
     assert "Both market and currency conditions are risk-off." in briefing["risk_alerts"]
+
+
+def test_build_briefing_generates_reasons_and_confidence():
+    briefing = build_briefing(
+        {
+            "market_change_pct": 1.0,
+            "usd_jpy": 156.2,
+            "watchlist_status": [
+                {
+                    "symbol": "7203.T",
+                    "price": 2810.0,
+                    "change_pct": 2.4,
+                    "status": "strong",
+                }
+            ],
+        }
+    )
+
+    assert "Nikkei day-over-day change is positive." in briefing["reasons"]
+    assert "USD/JPY is in a weak-yen range." in briefing["reasons"]
+    assert "7203.T is rising strongly versus the previous close." in briefing["reasons"]
+    assert briefing["confidence"] == "high"

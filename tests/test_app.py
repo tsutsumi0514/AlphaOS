@@ -14,6 +14,8 @@ def test_briefing_endpoint_returns_expected_keys():
     assert "watchlist_status" in data
     assert "risk_alerts" in data
     assert "key_changes" in data
+    assert "reasons" in data
+    assert "confidence" in data
 
 
 def test_briefing_endpoint_derives_fx_state_from_usd_jpy():
@@ -118,3 +120,6 @@ def test_briefing_endpoint_generates_risk_alerts(monkeypatch):
     assert "Market tone is bearish. Keep new positions small." in data["risk_alerts"]
     assert "Strong yen may pressure export-related names." in data["risk_alerts"]
     assert "Both market and currency conditions are risk-off." in data["risk_alerts"]
+    assert "Nikkei day-over-day change is negative." in data["reasons"]
+    assert "USD/JPY is in a strong-yen range." in data["reasons"]
+    assert data["confidence"] == "high"
