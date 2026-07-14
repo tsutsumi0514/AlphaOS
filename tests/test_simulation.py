@@ -1,6 +1,168 @@
 from datetime import date
 
+from src.learning.backtest import ReplayThresholds
+from src.simulation.replay import _compose_replay_briefing
 from src.simulation.replay import run_replay_simulation
+from src.simulation.replay import run_walk_forward_validation
+
+
+def test_run_walk_forward_validation_uses_fixed_rolling_training_window(monkeypatch):
+    records = []
+    for index in range(8):
+        briefing_date = date.fromordinal(date(2026, 1, 1).toordinal() + index)
+        outcome_date = date.fromordinal(date(2026, 1, 1).toordinal() + index + 1)
+        records.append(
+            {
+                "briefing_date": briefing_date,
+                "outcome_date": outcome_date,
+                "source": {
+                    "briefing_date": briefing_date,
+                    "market_change_pct": 1.0,
+                    "usd_jpy": 150.0,
+                    "watchlist_status": [],
+                },
+                "outcome": {
+                    "market_change_pct": 1.0,
+                    "usd_jpy": 150.0,
+                    "watchlist_status": [],
+                },
+            }
+        )
+
+    captured_lengths: list[int] = []
+
+    def fake_calibrate(window_records):
+        captured_lengths.append(len(window_records))
+        return ReplayThresholds()
+
+    monkeypatch.setattr("src.simulation.replay.calibrate_replay_thresholds", fake_calibrate)
+
+    result = run_walk_forward_validation(records, training_window=3, evaluation_window=2)
+
+    assert result["mode"] == "walk_forward"
+    assert captured_lengths == [3, 3, 3]
+    assert result["sample_size"] == 5
+
+
+def test_compose_replay_briefing_uses_live_briefing_path(monkeypatch):
+    captured_source = {}
+
+    def fake_compose_briefing(source, learning_summary=None):
+        captured_source.update(source)
+        return {
+            "headline": "live headline",
+            "market_state": "balanced",
+            "fx_state": "neutral",
+            "watchlist_status": [],
+            "risk_alerts": [],
+            "key_changes": [],
+            "reasons": [],
+            "evidence": [],
+            "confidence": "medium",
+            "decision_ai": {"agent": "ChairmanAI", "views": []},
+        }
+
+    monkeypatch.setattr("src.simulation.replay.compose_briefing", fake_compose_briefing)
+    monkeypatch.setattr(
+        "src.simulation.replay.find_latest_news_before",
+        lambda target_date: {
+            "title": "archive",
+            "source": "Archive",
+            "url": "https://example.com/archive",
+            "published_at": "2026-01-01T00:00:00+00:00",
+        },
+    )
+
+    result = _compose_replay_briefing(
+        {
+            "briefing_date": date(2026, 1, 5),
+            "market_change_pct": 1.2,
+            "usd_jpy": 156.2,
+            "watchlist_status": [
+                {"symbol": "7203.T", "change_pct": 2.1, "status": "strong"}
+            ],
+            "source": "live",
+        },
+        ReplayThresholds(),
+    )
+
+    assert result["headline"] == "live headline"
+    assert result["decision_ai"]["agent"] == "ChairmanAI"
+    assert captured_source["market_state_override"] in {"bullish", "bearish", "neutral"}
+    assert "key_changes" not in captured_source
+
+
+def test_run_replay_simulation_supports_five_hundred_sample_validation(monkeypatch):
+    start = date(2026, 1, 1)
+    dates = [date.fromordinal(start.toordinal() + offset) for offset in range(522)]
+
+    def build_series(base: float, step: float):
+        return [(trade_date, base + step * index) for index, trade_date in enumerate(dates)]
+
+    series = {
+        "^N225": build_series(40000.0, 8.0),
+        "JPY=X": build_series(150.0, 0.15),
+        "7203.T": build_series(2500.0, 4.0),
+        "6758.T": build_series(13000.0, 3.0),
+        "9984.T": build_series(9000.0, 5.0),
+    }
+
+    def loader(symbol: str, period: str):
+        return series[symbol]
+
+    monkeypatch.setattr(
+        "src.simulation.replay.find_latest_news_before",
+        lambda target_date: {
+            "title": f"archive {target_date}",
+            "source": "Archive",
+            "url": "https://example.com/archive",
+            "published_at": "2026-01-01T00:00:00+00:00",
+        },
+    )
+    monkeypatch.setattr(
+        "src.simulation.replay.compose_briefing",
+        lambda source, learning_summary=None: {
+            "headline": "replay",
+            "market_state": source.get("market_state_override", "neutral"),
+            "fx_state": source.get("fx_state_override", "neutral"),
+            "news_item": source.get("news_item"),
+            "watchlist_status": source.get("watchlist_status_override", []),
+            "risk_alerts": [],
+            "key_changes": [],
+            "reasons": [],
+            "evidence": [],
+            "confidence": "medium",
+            "decision_ai": {"agent": "ChairmanAI", "views": []},
+        },
+    )
+    monkeypatch.setattr(
+        "src.simulation.replay.score_briefing_against_outcome",
+        lambda briefing, outcome, thresholds=None: {
+            "matched": 5,
+            "total": 5,
+            "accuracy": 1.0,
+            "active_checks": 5,
+            "active_matched": 5,
+            "coverage": 1.0,
+            "active_accuracy": 1.0,
+            "weighted_matched": 7.0,
+            "weighted_total": 7.0,
+            "weighted_accuracy": 1.0,
+        },
+    )
+
+    result = run_replay_simulation(
+        lookback_trading_days=500,
+        period="5y",
+        symbols=("7203.T", "6758.T", "9984.T"),
+        history_loader=loader,
+    )
+
+    assert result["sample_size"] == 500
+    assert result["summary"]["total"] == 500
+    assert result["summary"]["accuracy"] >= 0.8
+    assert result["validation"]["sample_size"] >= 500
+    assert result["validation"]["summary"]["accuracy"] >= 0.8
 
 
 def test_run_replay_simulation_scores_historical_pairs(monkeypatch):

@@ -2,6 +2,7 @@
 
 ## Purpose
 Show the minimum market information needed to understand the current situation in a few seconds.
+This output is a compact support layer, not the final buy-candidate ranking.
 
 ## Fields
 - `headline`: One short line for a 5-second morning read.
@@ -14,6 +15,17 @@ Show the minimum market information needed to understand the current situation i
 - `reasons`: Short statements explaining why the current view was produced.
 - `confidence`: A simple confidence label, such as low, medium, or high.
 - `evidence`: Structured proof items that support the current view.
+
+## Agent Decision Contract
+- `agent`: Name of the agent that produced the view.
+- `stance`: Canonical stance label, such as supportive, balanced, defensive, neutral, or unknown.
+- `score`: Normalized support score between 0 and 1.
+- `confidence`: A simple confidence label, such as low, medium, or high.
+- `reason`: One short explanation sentence.
+- `evidence`: Structured proof items that justify the view.
+- `summary`: Optional short recap of the agent view.
+- `signals`: Optional short list of supporting signals.
+- `views`: Optional list of subviews for ChairmanAI synthesis.
 
 ## Principles
 - Keep the output short.
@@ -45,6 +57,12 @@ Show the minimum market information needed to understand the current situation i
 - Include the source, a short label, and the key value that drove the signal.
 - Keep evidence compact enough for later AI coordination and learning.
 - Use evidence to support future ChairmanAI, RiskAI, and presenter layers.
+- Briefing-facing text should be derived from evidence-backed state whenever possible.
+
+## Candidate Output Boundary
+- Do not force buy recommendations into `/briefing`.
+- Candidate ranking, entry timing, and day-trade mode should live in a separate opportunity-oriented layer.
+- `/briefing` may reference that a candidate exists, but it should stay short and readable.
 
 ## Headline Rules
 - Combine the most important market, FX, and watchlist signals into one short line.

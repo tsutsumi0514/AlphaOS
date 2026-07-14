@@ -137,6 +137,8 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
             else:
                 briefing[key] = list(value) if isinstance(value, list) else value
 
+    _apply_state_overrides(briefing, source)
+
     if not briefing["evidence"]:
         briefing["evidence"] = summarize_evidence(briefing, source)
 
@@ -156,6 +158,24 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         briefing["confidence"] = derive_confidence(briefing)
 
     return briefing
+
+
+def _apply_state_overrides(briefing: Briefing, source: Mapping[str, Any]) -> None:
+    market_state_override = source.get("market_state_override")
+    if isinstance(market_state_override, str) and market_state_override.strip():
+        briefing["market_state"] = market_state_override.strip()
+
+    fx_state_override = source.get("fx_state_override")
+    if isinstance(fx_state_override, str) and fx_state_override.strip():
+        briefing["fx_state"] = fx_state_override.strip()
+
+    watchlist_status_override = source.get("watchlist_status_override")
+    if isinstance(watchlist_status_override, list):
+        normalized: list[dict[str, Any]] = []
+        for item in watchlist_status_override:
+            if isinstance(item, Mapping):
+                normalized.append(dict(item))
+        briefing["watchlist_status"] = normalized
 
 
 def _serialize_evidence(value: Any) -> list[dict[str, Any]]:

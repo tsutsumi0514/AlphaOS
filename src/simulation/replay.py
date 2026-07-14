@@ -7,15 +7,6 @@ from datetime import date, datetime
 from typing import Any
 
 from ..agents.chairman_ai import compose_briefing
-from ..agents.decision_ai import build_decision_ai
-from ..briefing import (
-    derive_confidence,
-    summarize_evidence,
-    summarize_headline,
-    summarize_key_changes,
-    summarize_reasons,
-    summarize_risk_alerts,
-)
 from ..learning.backtest import (
     CHECK_WEIGHTS,
     ReplayThresholds,
@@ -39,11 +30,13 @@ REPLAY_LEARNING_SUMMARY: dict[str, Any] = {
 
 
 def run_replay_simulation(
-    lookback_trading_days: int = 20,
+    lookback_trading_days: int = 500,
     symbols: tuple[str, ...] = DEFAULT_WATCHLIST_SYMBOLS,
-    period: str = "6mo",
+    period: str = "5y",
     history_loader: HistoryLoader | None = None,
     calibrate: bool = True,
+    validation_training_window: int = 19,
+    validation_evaluation_window: int = 5,
 ) -> dict[str, Any]:
     """Run a replay simulation over historical daily market data."""
     loader = history_loader or _load_close_history
@@ -74,12 +67,14 @@ def run_replay_simulation(
         }
 
     window_records = records[-lookback_trading_days:] if lookback_trading_days > 0 else records
-    thresholds = (
-        calibrate_replay_thresholds(window_records) if calibrate else ReplayThresholds()
-    )
+    thresholds = calibrate_replay_thresholds(window_records) if calibrate else ReplayThresholds()
     calibration_summary = _score_records(window_records, thresholds)
     baseline_summary = _score_records(window_records, ReplayThresholds())
-    validation = run_walk_forward_validation(records)
+    validation = run_walk_forward_validation(
+        records,
+        training_window=validation_training_window,
+        evaluation_window=validation_evaluation_window,
+    )
     results: list[dict[str, Any]] = []
 
     for record in window_records:
@@ -153,7 +148,7 @@ def _score_records(
 
 def run_walk_forward_validation(
     records: list[dict[str, Any]],
-    training_window: int = 20,
+    training_window: int = 19,
     evaluation_window: int = 5,
 ) -> dict[str, Any]:
     if len(records) < training_window + evaluation_window:
@@ -175,7 +170,8 @@ def run_walk_forward_validation(
 
     start = training_window
     while start < len(records):
-        train_records = records[:start]
+        train_start = max(0, start - training_window)
+        train_records = records[train_start:start]
         eval_records = records[start : min(len(records), start + evaluation_window)]
         if not train_records or not eval_records:
             break
@@ -246,34 +242,28 @@ def _compose_replay_briefing(
             replay_source.get("briefing_date")
         )
 
-    briefing = compose_briefing(replay_source, learning_summary=REPLAY_LEARNING_SUMMARY)
-    _apply_replay_thresholds(briefing, source, thresholds)
-    briefing["decision_ai"] = build_decision_ai(briefing)
-    return briefing
+    replay_source.update(_build_replay_overrides(source, thresholds))
+    return compose_briefing(replay_source, learning_summary=REPLAY_LEARNING_SUMMARY)
 
 
-def _apply_replay_thresholds(
-    briefing: dict[str, Any], source: Mapping[str, Any], thresholds: ReplayThresholds
-) -> None:
+def _build_replay_overrides(
+    source: Mapping[str, Any], thresholds: ReplayThresholds
+) -> dict[str, Any]:
     market_change_pct = source.get("market_change_pct")
     usd_jpy = source.get("usd_jpy")
     watchlist_status = source.get("watchlist_status")
 
-    briefing["market_state"] = _classify_market_state(
-        market_change_pct, thresholds.market_move_pct
-    )
-    briefing["fx_state"] = _classify_fx_state(
-        usd_jpy, thresholds.fx_weak_yen, thresholds.fx_strong_yen
-    )
-    briefing["watchlist_status"] = _relabel_watchlist(
-        watchlist_status, thresholds.watchlist_move_pct
-    )
-    briefing["evidence"] = summarize_evidence(briefing, source)
-    briefing["risk_alerts"] = summarize_risk_alerts(briefing)
-    briefing["key_changes"] = summarize_key_changes(briefing)
-    briefing["reasons"] = summarize_reasons(briefing)
-    briefing["headline"] = summarize_headline(briefing)
-    briefing["confidence"] = derive_confidence(briefing)
+    return {
+        "market_state_override": _classify_market_state(
+            market_change_pct, thresholds.market_move_pct
+        ),
+        "fx_state_override": _classify_fx_state(
+            usd_jpy, thresholds.fx_weak_yen, thresholds.fx_strong_yen
+        ),
+        "watchlist_status_override": _relabel_watchlist(
+            watchlist_status, thresholds.watchlist_move_pct
+        ),
+    }
 
 
 def _market_candidates(records: list[dict[str, Any]]) -> list[float]:
@@ -366,12 +356,22 @@ def _threshold_summary(
 
 
 def _threshold_score(summary: Mapping[str, Any]) -> float:
+    accuracy = float(summary.get("accuracy", 0.0))
     coverage = float(summary.get("coverage", 0.0))
     weighted_accuracy = float(summary.get("weighted_accuracy", 0.0))
     active_accuracy = float(summary.get("active_accuracy", 0.0))
-    if coverage < 0.35:
-        return coverage * 0.5 + weighted_accuracy * 0.5
-    return weighted_accuracy * 0.7 + active_accuracy * 0.3 + coverage * 0.1
+    target_coverage = 0.35
+    score = (
+        accuracy * 0.6
+        + weighted_accuracy * 0.15
+        + active_accuracy * 0.1
+        + coverage * 0.15
+    )
+    if coverage < target_coverage:
+        score -= (target_coverage - coverage) * 0.45
+    else:
+        score += min(coverage - target_coverage, 0.2) * 0.05
+    return score
 
 
 def _direct_score_record(

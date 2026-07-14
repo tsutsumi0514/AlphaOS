@@ -1,9 +1,9 @@
 # AlphaOS Handoff
 
 ## Project Purpose
-AlphaOS is an AI-assisted investment support operating system for individual investors.
-Its goal is not to predict markets perfectly or automate trading.
-Its goal is to help a human understand the market quickly, see evidence clearly, and make safer decisions.
+AlphaOS is an AI-assisted investment decision support operating system for individual investors.
+Its goal is not to automate trading.
+Its goal is to help a human find buy candidates, see evidence clearly, understand risk, and decide quickly.
 
 ## Core Design Philosophy
 - Reduce information overload.
@@ -11,6 +11,8 @@ Its goal is to help a human understand the market quickly, see evidence clearly,
 - Show reasons and confidence.
 - Prioritize risk management over profit chasing.
 - Keep the final decision with the human.
+- Support buy-candidate ranking and entry timing.
+- Treat day-trade and swing-trade as separate output modes with shared core data.
 - Build a design that can survive future model and UI changes.
 
 ## Current Architecture
@@ -39,6 +41,8 @@ Current collectors fetch external inputs:
 - `src/agents/risk_ai.py` owns the risk review step.
 - `src/agents/macro_ai.py`, `src/agents/news_ai.py`, `src/agents/technical_ai.py`, and `src/agents/company_ai.py` provide the V4 subviews.
 - `src/agents/decision_ai.py` synthesizes those views into one decision support block.
+- `src/agents/contracts.py` defines the shared AgentDecision contract for agent outputs.
+- The next layer after `decision_ai` is the `Opportunity Engine`, which should turn evidence-backed decisions into ranked buy candidates and entry timing hints.
 
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.
@@ -68,6 +72,7 @@ Current collectors fetch external inputs:
 - `src/app.py` also exposes `/history/view` as a simple Web review surface.
 - `src/app.py` also exposes `/outcome` and `/learning`.
 - `src/app.py` also exposes `/simulate` for historical replay and validation.
+- Planned API surfaces should include candidate-oriented views such as `/candidates` and `/daytrade-candidates`.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 
@@ -95,7 +100,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - `/outcome` endpoint for recording realized outcomes.
 - `/learning` endpoint for reading the current learning summary.
 - `/simulate` endpoint for replaying historical market inputs without future leakage.
-- Replay mode calibrates threshold labels on the selected historical window, reports a baseline comparison, and includes walk-forward validation.
+- Replay mode calibrates threshold labels on the selected historical window, reports a baseline comparison, and includes 500-sample walk-forward validation by default when the archive is large enough.
 - Briefing input collector under `src/collectors/briefing_inputs.py`.
 - Top-level coordinator under `src/agents/chairman_ai.py`.
 - Risk review step under `src/agents/risk_ai.py`.
@@ -166,12 +171,28 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Support historical replay against archived market inputs.
 - Keep the final decision human-facing and compact.
 
+### v5
+- Add Opportunity Engine.
+- Build candidate ranking from Evidence, Confidence, and Risk.
+- Add entry timing hints.
+- Keep `/briefing` backward compatible.
+
+### v6
+- Add Market Memory and similar-case retrieval if it improves candidate quality.
+- Store outcomes and replay results with the candidate history.
+
+### v7
+- Add Learning AI and backtest-driven refinement.
+
+### v8
+- Add simple Knowledge Graph and personalization only if they improve candidate proposals.
+
 ## Priority Order
 1. Keep the current v1 briefing stable.
-2. Expand evidence and risk logic carefully.
-3. Introduce clearer collector/analyzer separation.
-4. Add presenters such as LINE and Web.
-5. Add learning and backtesting later.
+2. Add the candidate proposal layer above the current decision stack.
+3. Expand evidence and risk logic carefully.
+4. Split day-trade and swing-trade only after the shared candidate contract is stable.
+5. Add memory and learning only when they improve real candidate quality.
 
 ## Cautions
 - External market and news sources can be slow or unavailable.
@@ -182,6 +203,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Replay mode should not use future information. If archived news is unavailable, it should be reported as unavailable rather than guessed.
 - Replay calibration is allowed only inside the selected replay window and must be reported alongside the baseline result.
 - Walk-forward validation must use only past data for threshold selection and future data for evaluation.
+- Replay defaults now target a 500-day lookback and a 5y period to make consistency checks less noisy and closer to product-scale validation.
 - When changing payload shape, update docs and tests together.
 
 ## Verification

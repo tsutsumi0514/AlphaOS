@@ -1,7 +1,7 @@
 # AlphaOS Architecture
 
 ## Purpose
-AlphaOS is an investment support system that keeps the UI simple while preserving evidence, reasons, and risk awareness.
+AlphaOS is an investment decision support system that keeps the UI simple while preserving evidence, reasons, risk awareness, and buy-candidate proposals.
 
 ## Current Direction
 The current `briefing` module is the v1 orchestration layer. It should remain small, but it must be easy to split into clearer roles later.
@@ -10,7 +10,8 @@ Risk and evidence logic now live in a small analyzer module so the orchestration
 The current v2 step adds explicit collector and agent entry points without changing the public API.
 The current v3 step adds JSONL history storage, weighted backtesting helpers, and period snapshots for learning.
 The current API layer also exposes `/history`, `/history/view`, `/backtest`, `/outcome`, and `/learning` for reviewing stored briefings, recording outcomes, and scoring them against outcomes.
-The current v4 step adds a multi-agent decision view and a historical replay simulation endpoint with in-window calibration, baseline comparison, and walk-forward validation.
+The current v4 step adds a multi-agent decision view and a historical replay simulation endpoint with in-window calibration, baseline comparison, and 500-sample walk-forward validation.
+The next major layer is `Opportunity Engine`, which should translate decision output into ranked buy candidates and entry timing hints.
 
 ## Target Layering
 
@@ -20,11 +21,14 @@ flowchart TD
   B --> C["RiskAI"]
   B --> D["ChairmanAI"]
   C --> D
-  D --> E["Briefing"]
-  E --> F["Presenter"]
-  F --> G["LINE"]
-  F --> H["Web"]
-  F --> I["Voice"]
+  D --> E["Opportunity Engine"]
+  E --> F["Candidate Ranking"]
+  F --> G["Entry Timing"]
+  G --> H["Briefing / Presentation"]
+  H --> I["Presenter"]
+  I --> J["LINE"]
+  I --> K["Web"]
+  I --> L["Voice"]
 ```
 
 ## Role Summary
@@ -32,7 +36,9 @@ flowchart TD
 - `analyzers/`: derive signals and structured evidence.
 - `agents/`: domain-specific AI workers such as NewsAI, MacroAI, RiskAI, and ChairmanAI.
 - `agents/decision_ai.py`: combines MacroAI, NewsAI, TechnicalAI, CompanyAI, and RiskAI into one decision view.
+- `agents/contracts.py`: shared AgentDecision contract for agent outputs.
 - `briefing.py`: present a compact morning summary.
+- `opportunity/`: candidate ranking and entry timing logic to be added next.
 - `presenters/`: format the same briefing for LINE, Web, or future interfaces.
 - `presenters/web.py`: current HTML presenter for the simple Web UI.
 - `presenters/history.py`: current HTML presenter for the history view.
@@ -56,4 +62,8 @@ This makes later agent coordination, learning, and backtesting possible.
 - `v2`: AI meeting / multi-agent coordination.
 - `v3`: Learning loop, score tracking, weighted backtesting, and history review UI.
 - `v4`: Decision AI with replayable historical simulation.
-- `v4`: Decision AI with replayable historical simulation, calibrated for the replay window, and walk-forward validation.
+- `v4`: Decision AI with replayable historical simulation, calibrated for the replay window, 500-sample validation, and walk-forward validation.
+- `v5`: Opportunity Engine with ranked buy candidates and entry timing.
+- `v6`: Market Memory that helps candidate quality when it proves useful.
+- `v7`: Learning loop that improves candidate ranking with real outcomes.
+- `v8`: Knowledge Graph and personalization only if they improve candidate proposals.

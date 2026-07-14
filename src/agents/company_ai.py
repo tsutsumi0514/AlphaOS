@@ -5,16 +5,22 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from .contracts import make_agent_decision
+
 
 def review_company(briefing: Mapping[str, Any]) -> dict[str, Any]:
     watchlist = _watchlist_items(briefing)
     if not watchlist:
-        return {
-            "agent": "CompanyAI",
-            "stance": "unknown",
-            "summary": "No company-specific watchlist data is available.",
-            "signals": ["No watchlist symbols were supplied."],
-        }
+        return make_agent_decision(
+            agent="CompanyAI",
+            stance="unknown",
+            score=0.0,
+            confidence="low",
+            reason="No company-specific watchlist data is available.",
+            evidence=_select_evidence(briefing, {"watchlist"}),
+            summary="No company-specific watchlist data is available.",
+            signals=["No watchlist symbols were supplied."],
+        )
 
     strong = [item.get("symbol") for item in watchlist if item.get("status") == "strong"]
     weak = [item.get("symbol") for item in watchlist if item.get("status") == "weak"]
@@ -37,12 +43,17 @@ def review_company(briefing: Mapping[str, Any]) -> dict[str, Any]:
     if not signals:
         signals.append("All tracked names are steady.")
 
-    return {
-        "agent": "CompanyAI",
-        "stance": stance,
-        "summary": summary,
-        "signals": signals,
-    }
+    score = 0.75 if stance == "supportive" else 0.25 if stance == "defensive" else 0.5
+    return make_agent_decision(
+        agent="CompanyAI",
+        stance=stance,
+        score=score,
+        confidence="high" if len(watchlist) >= 3 else "medium",
+        reason=summary,
+        evidence=_select_evidence(briefing, {"watchlist"}),
+        summary=summary,
+        signals=signals,
+    )
 
 
 def _watchlist_items(briefing: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -55,3 +66,16 @@ def _watchlist_items(briefing: Mapping[str, Any]) -> list[Mapping[str, Any]]:
         if isinstance(item, Mapping):
             items.append(item)
     return items
+
+
+def _select_evidence(briefing: Mapping[str, Any], sources: set[str]) -> list[dict[str, Any]]:
+    evidence = briefing.get("evidence")
+    if not isinstance(evidence, list):
+        return []
+    selected: list[dict[str, Any]] = []
+    for item in evidence:
+        if not isinstance(item, Mapping):
+            continue
+        if item.get("source") in sources:
+            selected.append(dict(item))
+    return selected
