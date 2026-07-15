@@ -9,21 +9,23 @@ from .cache import get_cached_value
 
 _NIKKEI_CHANGE_CACHE_KEY = "market.nikkei_change_pct"
 _NIKKEI_CHANGE_CACHE_TTL_SECONDS = 300
+_VALID_INTERVALS = {"1d", "1m", "2m", "5m", "15m", "30m", "60m"}
 
 
-def fetch_nikkei_change_pct() -> float | None:
+def fetch_nikkei_change_pct(interval: str = "1d") -> float | None:
     """Fetch the latest Nikkei 225 day-over-day percent change.
 
     Returns None when the change cannot be obtained.
     """
+    interval = _normalize_interval(interval)
     return get_cached_value(
-        _NIKKEI_CHANGE_CACHE_KEY,
-        _fetch_nikkei_change_pct_uncached,
+        f"{_NIKKEI_CHANGE_CACHE_KEY}.{interval}",
+        lambda interval=interval: _fetch_nikkei_change_pct_uncached(interval),
         _NIKKEI_CHANGE_CACHE_TTL_SECONDS,
     )
 
 
-def _fetch_nikkei_change_pct_uncached() -> float | None:
+def _fetch_nikkei_change_pct_uncached(interval: str) -> float | None:
     try:
         import yfinance as yf
     except Exception:
@@ -31,7 +33,7 @@ def _fetch_nikkei_change_pct_uncached() -> float | None:
 
     try:
         ticker = yf.Ticker("^N225")
-        history: Any = ticker.history(period="5d", interval="1d")
+        history: Any = ticker.history(period="5d", interval=interval)
         if history is None or history.empty:
             return None
         close = history["Close"].dropna()
@@ -44,3 +46,10 @@ def _fetch_nikkei_change_pct_uncached() -> float | None:
         return ((latest_close - previous_close) / previous_close) * 100.0
     except Exception:
         return None
+
+
+def _normalize_interval(interval: str | None) -> str:
+    if not isinstance(interval, str):
+        return "1d"
+    text = interval.strip().lower()
+    return text if text in _VALID_INTERVALS else "1d"

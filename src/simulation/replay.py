@@ -117,14 +117,32 @@ def run_replay_simulation(
 
 
 def calibrate_replay_thresholds(records: list[dict[str, Any]]) -> ReplayThresholds:
-    market_candidates = _market_candidates(records)
-    fx_candidates = _fx_candidates(records)
-    watchlist_candidates = _watchlist_candidates(records)
+    market_values: list[float] = []
+    fx_values: list[float] = []
+    watchlist_values: list[float] = []
+    for record in records:
+        for key in ("source", "outcome"):
+            payload = record[key]
+            market_value = payload.get("market_change_pct")
+            if isinstance(market_value, (int, float)):
+                market_values.append(abs(float(market_value)))
+            fx_value = payload.get("usd_jpy")
+            if isinstance(fx_value, (int, float)):
+                fx_values.append(float(fx_value))
+            watchlist = payload.get("watchlist_status")
+            if not isinstance(watchlist, list):
+                continue
+            for item in watchlist:
+                if not isinstance(item, Mapping):
+                    continue
+                change_pct = item.get("change_pct")
+                if isinstance(change_pct, (int, float)):
+                    watchlist_values.append(abs(float(change_pct)))
 
-    market_threshold = _best_market_threshold(records, market_candidates)
-    fx_thresholds = _best_fx_threshold(records, fx_candidates)
-    watchlist_threshold = _best_watchlist_threshold(records, watchlist_candidates)
-
+    market_threshold = _median_or_default(market_values, 0.7)
+    fx_midpoint = _median_or_default(fx_values, 150.0)
+    fx_thresholds = (round(max(fx_midpoint + 4.0, fx_midpoint + 1.0), 3), round(min(fx_midpoint - 4.0, fx_midpoint - 1.0), 3))
+    watchlist_threshold = _median_or_default(watchlist_values, 2.0)
     return ReplayThresholds(
         market_move_pct=market_threshold,
         fx_weak_yen=fx_thresholds[0],
@@ -177,8 +195,10 @@ def run_walk_forward_validation(
             break
 
         thresholds = calibrate_replay_thresholds(train_records)
-        fold_results = _score_records(eval_records, thresholds)
-        baseline_fold_results = _score_records(eval_records, ReplayThresholds())
+        fold_items = _fold_result_items(eval_records, thresholds)
+        baseline_items = _fold_result_items(eval_records, ReplayThresholds())
+        fold_results = summarize_backtest(fold_items)
+        baseline_fold_results = summarize_backtest(baseline_items)
 
         folds.append(
             {
@@ -195,8 +215,8 @@ def run_walk_forward_validation(
                 "baseline": baseline_fold_results,
             }
         )
-        evaluated_results.extend({"result": result["result"]} for result in _fold_result_items(eval_records, thresholds))
-        baseline_results.extend({"result": result["result"]} for result in _fold_result_items(eval_records, ReplayThresholds()))
+        evaluated_results.extend(fold_items)
+        baseline_results.extend(baseline_items)
         start += evaluation_window
 
     summary = summarize_backtest(evaluated_results)
@@ -665,3 +685,13 @@ def _to_date(value: Any) -> date | None:
         except Exception:
             return None
     return None
+
+
+def _median_or_default(values: list[float], default: float) -> float:
+    if not values:
+        return default
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2.0

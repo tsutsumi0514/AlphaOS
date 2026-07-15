@@ -51,3 +51,29 @@ def test_collect_briefing_source_survives_failures(monkeypatch):
     )
 
     assert collect_briefing_source() is None
+
+
+def test_collect_briefing_source_passes_interval_to_fetchers(monkeypatch):
+    seen = {}
+
+    def fake_usd_jpy_rate(interval):
+        seen["usd_jpy"] = interval
+        return 156.2
+
+    def fake_nikkei_change_pct(interval):
+        seen["market"] = interval
+        return 1.2
+
+    def fake_watchlist_status(symbols, interval):
+        seen["watchlist"] = interval
+        return [{"symbol": symbols[0], "status": "strong"}]
+
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", fake_usd_jpy_rate)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", fake_nikkei_change_pct)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_watchlist_status", fake_watchlist_status)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_latest_market_news", lambda: None)
+
+    source = collect_briefing_source(watchlist_symbol="9984.T", interval="1m")
+
+    assert source["data_interval"] == "1m"
+    assert seen == {"usd_jpy": "1m", "market": "1m", "watchlist": "1m"}

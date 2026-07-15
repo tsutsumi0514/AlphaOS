@@ -1,62 +1,61 @@
 # AlphaOS V5 Implementation Tickets
 
 ## Scope
-V5 is Market Memory. Start with realistic, measurable, evidence-based features only.
+V5 is the Opportunity Engine. The goal is to turn the existing evidence, confidence, and risk stack into ranked buy candidates with entry timing hints.
 
 ## V5-01
-- **Title**: MemoryRecord schema
-- **Purpose**: Define one stable record format for briefing, evidence, confidence, risk, outcome, and timestamps.
+- **Title**: OpportunityCandidate schema
+- **Purpose**: Define one stable record format for candidate symbol, horizon, score, confidence, evidence, risk, and entry timing.
 - **Dependencies**: None
-- **Done**: A MemoryRecord model exists, is documented, and is covered by validation tests.
+- **Done**: A candidate model exists, is documented, and is covered by validation tests.
 - **Priority**: High
 
 ## V5-02
-- **Title**: Convert briefing history into MemoryRecord
-- **Purpose**: Preserve existing briefing history by converting it into the new memory format.
+- **Title**: Candidate scoring from current decision stack
+- **Purpose**: Convert Evidence, Confidence, RiskAI, and ChairmanAI output into one candidate score.
 - **Dependencies**: V5-01
-- **Done**: Existing briefing snapshots can be stored as MemoryRecord without breaking current /briefing output.
+- **Done**: The system can produce a candidate score from current briefing data without breaking `/briefing`.
 - **Priority**: High
 
 ## V5-03
-- **Title**: Rule-based market regime classifier
-- **Purpose**: Tag each record with a simple regime such as risk_on, risk_off, strong_yen, weak_yen, rising_market, falling_market.
-- **Dependencies**: V5-01
-- **Done**: Regime tags are derived from current signals using explicit rules and unit tests.
+- **Title**: Candidate ranking
+- **Purpose**: Rank one or more buy candidates using the shared candidate score and explain why the top item won.
+- **Dependencies**: V5-01, V5-02
+- **Done**: The system returns a sorted candidate list with reasons, risk notes, and a short entry reason.
 - **Priority**: High
 
 ## V5-04
-- **Title**: Similar memory search
-- **Purpose**: Find the top similar past cases for the current briefing using explainable weighted scoring.
-- **Dependencies**: V5-01, V5-03
-- **Done**: The system returns similar_cases, similarity_score, common_factors, different_factors, and a low-confidence result when matches are weak.
-- **Priority**: High
+- **Title**: Entry timing hint
+- **Purpose**: Add a minimal entry timing hint based on current signals, while keeping the logic simple and explainable.
+- **Dependencies**: V5-01, V5-02
+- **Done**: The system returns a short entry timing recommendation such as `buy_now`, `wait`, or `avoid`.
+- **Priority**: Medium
 
 ## V5-05
-- **Title**: Outcome linkage
-- **Purpose**: Attach later market outcomes to saved memory records so past cases can be judged against reality.
-- **Dependencies**: V5-01
-- **Done**: Records can store follow-up outcomes for next-day, 5-day, and 20-day checks.
+- **Title**: Mode split for swing and day-trade
+- **Purpose**: Prepare a shared core that can branch into swing-trade and day-trade outputs without duplicating the data collection layer.
+- **Dependencies**: V5-01, V5-03
+- **Done**: The system can label a candidate as swing or day-trade oriented and apply a stricter day-trade liquidity filter.
 - **Priority**: Medium
 
 ## V5-06
-- **Title**: Optional memory_context in /briefing
-- **Purpose**: Add memory as supporting context without changing the existing briefing contract.
-- **Dependencies**: V5-04, V5-05
-- **Done**: /briefing can include memory_context optionally, while old fields remain unchanged.
+- **Title**: Candidate output API and presenter hook
+- **Purpose**: Expose the opportunity output through a separate endpoint or presenter path while keeping `/briefing` backward compatible.
+- **Dependencies**: V5-03, V5-04, V5-05
+- **Done**: A candidate-oriented output is reachable without changing the current briefing contract.
 - **Priority**: Medium
 
 ## V5-07
-- **Title**: V5 evidence and safety tests
-- **Purpose**: Ensure memory never uses future data and never overrides current evidence.
-- **Dependencies**: V5-01, V5-04, V5-06
-- **Done**: Tests cover no-future-info, stable similarity, no-match behavior, and backward compatibility.
+- **Title**: Opportunity Engine safety tests
+- **Purpose**: Protect backward compatibility and ensure candidate ranking stays explainable and evidence-based.
+- **Dependencies**: V5-01, V5-03, V5-06
+- **Done**: Tests cover schema stability, ranking order, filtering, backward compatibility, and no auto-trading behavior.
 - **Priority**: High
 
-## Deferred to V5.5
-- A/B comparison between memory-aware and memory-free decisions
-- /memory/{id} detail API
-- /memory/compare API
-- more advanced comparison analytics
+## Deferred to V6
+- Market Memory
+- similar-case retrieval
+- outcome linkage for historical candidate comparisons
 
 ## Implementation order
 1. V5-01
@@ -68,7 +67,8 @@ V5 is Market Memory. Start with realistic, measurable, evidence-based features o
 7. V5-07
 
 ## Notes for AI1
-- Keep briefing.py as orchestration only.
-- Do not add heavy AI or vector DB logic in V5.
-- Preserve backward compatibility of /briefing.
-- Evidence, Confidence, Risk, and human final judgment must remain intact.
+- Keep `briefing.py` as orchestration only.
+- Do not put heavy analysis inside `briefing.py`.
+- Preserve `/briefing` backward compatibility.
+- Keep Evidence, Confidence, Risk, and human final judgment intact.
+- Use the current V4 decision stack as the source of truth for candidate generation.

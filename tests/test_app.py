@@ -41,6 +41,10 @@ def stub_external_sources(monkeypatch):
     )
     monkeypatch.setattr("src.app.record_briefing_snapshot", lambda briefing, source: None)
     monkeypatch.setattr("src.app.record_news_snapshot", lambda news_item, recorded_at=None: None)
+    monkeypatch.setattr("src.app.record_market_memory", lambda briefing, source: None)
+    monkeypatch.setattr("src.app.update_market_memory", lambda briefing_id, outcome: None)
+    monkeypatch.setattr("src.app.record_replay_memory", lambda replay_result: None)
+    monkeypatch.setattr("src.app.run_opportunity_validation", lambda **kwargs: {"mode": "opportunity_validation", "sample_size": 1, "by_horizon": {}, "walk_forward": {}})
 
 
 def test_briefing_endpoint_returns_expected_keys():
@@ -78,6 +82,39 @@ def test_briefing_endpoint_derives_market_state_from_change_pct():
     data = response.json()
     assert data["market_state"] == "bullish"
     assert "Nikkei momentum is positive today." in data["key_changes"]
+
+
+def test_briefing_endpoint_passes_interval_to_collectors(monkeypatch):
+    seen: dict[str, str] = {}
+
+    def fake_fx(interval="1d"):
+        seen["fx"] = interval
+        return 156.2
+
+    def fake_market(interval="1d"):
+        seen["market"] = interval
+        return 1.2
+
+    def fake_watchlist(symbols, interval="1d"):
+        seen["watchlist"] = interval
+        return [
+            {
+                "symbol": symbol,
+                "price": 2810.0,
+                "change_pct": 2.4,
+                "status": "strong",
+            }
+            for symbol in symbols
+        ]
+
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", fake_fx)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", fake_market)
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_watchlist_status", fake_watchlist)
+
+    response = client.get("/briefing?interval=1m")
+
+    assert response.status_code == 200
+    assert seen == {"fx": "1m", "market": "1m", "watchlist": "1m"}
 
 
 def test_briefing_endpoint_uses_fetched_usd_jpy(monkeypatch):
@@ -338,6 +375,106 @@ def test_learning_endpoint_returns_summary(monkeypatch):
     assert "periods" in data
 
 
+def test_memory_endpoint_returns_recent_records(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.load_market_memory",
+        lambda: [
+            {"briefing_id": "one", "recorded_at": "2026-07-14T00:00:00Z"},
+            {"briefing_id": "two", "recorded_at": "2026-07-14T01:00:00Z"},
+        ],
+    )
+
+    response = client.get("/memory?limit=1")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 2
+    assert len(data["records"]) == 1
+    assert data["records"][0]["briefing_id"] == "two"
+
+
+def test_memory_search_uses_current_briefing(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.find_similar_market_memory",
+        lambda briefing, limit=5: [
+            {
+                "briefing_id": "alpha",
+                "score": 0.91,
+                "match_reasons": ["market_state"],
+            }
+        ],
+    )
+
+    response = client.get("/memory/search?limit=1")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["count"] == 1
+    assert data["matches"][0]["briefing_id"] == "alpha"
+    assert data["query"]["market_state"] in {"bullish", "bearish", "balanced", "neutral"}
+
+
+def test_candidates_endpoint_applies_personal_profile(monkeypatch):
+    response = client.get("/candidates?limit=2&holdings=7203.T")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["personal_profile"] == {"holdings": ["7203.T"]}
+    assert data["candidates"][0]["symbol"] != "7203.T"
+    assert data["top_candidate"]["symbol"] == data["candidates"][0]["symbol"]
+
+
+def test_what_if_endpoint_returns_scenarios():
+    response = client.post("/what-if", json={"scenarios": ["yen_appreciation", "rate_cut"]})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["scenario_count"] == 2
+    assert data["scenarios"][0]["name"] == "yen_appreciation"
+    assert data["scenarios"][1]["name"] == "rate_cut"
+
+
+def test_knowledge_graph_endpoint_returns_nodes_and_edges():
+    response = client.get("/knowledge-graph?scenarios=rate_cut")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["nodes"]
+    assert data["edges"]
+    assert any(node["kind"] == "scenario" for node in data["nodes"])
+
+
+def test_replay_compare_view_returns_html(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.find_latest_replay_summary",
+        lambda: {"replay_summary": {"sample_size": 2, "summary": {"accuracy": 1.0}}},
+    )
+    monkeypatch.setattr(
+        "src.app.load_market_memory",
+        lambda: [
+            {
+                "memory_id": "one",
+                "recorded_at": "2026-07-15T00:00:00Z",
+                "type": "market_memory",
+                "briefing_id": "alpha",
+                "market_state": "bullish",
+                "fx_state": "weak yen",
+                "confidence": "high",
+                "risk_alerts": ["Market tone is calm."],
+                "reasons": ["Momentum is improving."],
+                "evidence": [{"source": "market", "label": "Nikkei", "value": 1.2}],
+                "watchlist_status": [{"symbol": "7203.T", "status": "strong"}],
+            }
+        ],
+    )
+
+    response = client.get("/replay/compare")
+
+    assert response.status_code == 200
+    assert "AlphaOS Replay Comparison" in response.text
+    assert "Similar Cases" in response.text
+
+
 def test_backtest_endpoint_scores_payload():
     response = client.post(
         "/backtest",
@@ -393,3 +530,75 @@ def test_simulate_endpoint_returns_result(monkeypatch):
     data = response.json()
     assert data["mode"] == "replay"
     assert data["sample_size"] == 2
+
+
+def test_validate_endpoint_returns_result(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.run_opportunity_validation",
+        lambda **kwargs: {
+            "mode": "opportunity_validation",
+            "sample_size": 2,
+            "transaction_cost_pct": 0.002,
+            "horizons": ("daytrade", "swing", "long"),
+            "by_horizon": {
+                "daytrade": {"summary": {"total": 1, "win_rate": 1.0}, "baseline": {"summary": {"total": 1}}},
+                "swing": {"summary": {"total": 1, "win_rate": 1.0}, "baseline": {"summary": {"total": 1}}},
+                "long": {"summary": {"total": 1, "win_rate": 1.0}, "baseline": {"summary": {"total": 1}}},
+            },
+            "walk_forward": {"mode": "walk_forward", "sample_size": 2, "by_horizon": {}, "folds": []},
+        },
+    )
+    monkeypatch.setattr("src.app.record_replay_memory", lambda replay_result: None)
+
+    response = client.post("/validate", json={"lookback_trading_days": 2})
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["mode"] == "opportunity_validation"
+    assert data["sample_size"] == 2
+
+
+def test_validate_view_returns_html(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.run_opportunity_validation",
+        lambda **kwargs: {
+            "mode": "opportunity_validation",
+            "sample_size": 2,
+            "transaction_cost_pct": 0.002,
+            "by_horizon": {
+                "swing": {
+                    "summary": {
+                        "total": 2,
+                        "win_rate": 0.5,
+                        "total_return_pct": 0.12,
+                        "profit_factor": 1.23,
+                        "sharpe": 0.77,
+                        "max_drawdown_pct": -0.04,
+                    },
+                    "baseline": {"summary": {"total_return_pct": 0.05}},
+                }
+            },
+            "walk_forward": {
+                "mode": "walk_forward",
+                "by_horizon": {
+                    "swing": {
+                        "summary": {
+                            "total": 2,
+                            "win_rate": 0.5,
+                            "total_return_pct": 0.12,
+                        }
+                    }
+                },
+            },
+        },
+    )
+    monkeypatch.setattr("src.app.record_replay_memory", lambda replay_result: None)
+
+    response = client.get("/validate/view")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AlphaOS Opportunity Validation" in response.text
+    assert "swing" in response.text
+    assert "Win rate" in response.text
+    assert "Walk-forward" in response.text

@@ -1,6 +1,6 @@
 # AlphaOS
 
-個人投資家向けのAI投資支援OSです。
+個人投資家向けのAI投資意思決定支援OSです。
 
 ## Goal
 - 情報を減らす
@@ -8,16 +8,19 @@
 - AIは根拠と自信度を示す
 - 利益よりリスク管理を重視する
 - 最終判断は人間が行う
+- 市場要約よりも、購入候補銘柄の提案を優先する
 
 ## MVP
-- 市場状況の要約
-- 注目銘柄の簡易表示
+- 購入候補銘柄の提案
+- 候補の根拠表示
 - リスク警告
+- Entry Timing の簡易提示
 - LINEまたは簡易Web UI
 
 ## Key Docs
 - [Project Bible](docs/Project_Bible.md)
 - [Architecture](docs/architecture.md)
+- [Opportunity Spec](docs/opportunity-spec.md)
 - [Codex Guide](prompts/Codex_Guide.md)
 - [ADR-0001](decisions/ADR-0001.md)
 - [Roadmap](roadmap/roadmap.md)
@@ -37,6 +40,8 @@
   - `http://127.0.0.1:8000/`
 - Use the JSON API:
   - `http://127.0.0.1:8000/briefing`
+- Use minute-granularity inputs when needed:
+  - `http://127.0.0.1:8000/briefing?interval=1m`
 
 ## Test
 - Run tests:
@@ -46,6 +51,13 @@
 - `src/app.py`: history, history view, and backtest API endpoints
 - `src/app.py`: outcome and learning API endpoints
 - `src/app.py`: replay and validation simulation API endpoint
+- `src/app.py`: opportunity validation API endpoint
+- `src/app.py`: candidate proposal API endpoint
+- `src/app.py`: market memory and similar-case search endpoints
+- `src/app.py`: what-if, knowledge graph, and replay comparison endpoints
+- `src/app.py`: interval-aware input collection for `1d` and `1m` views
+- `src/agents/contracts.py`: shared AgentDecision contract
+- `src/agents/`: decision synthesis and future opportunity layer entry points
 - `src/collectors/briefing_inputs.py`: briefing input collection
 - `src/agents/chairman_ai.py`: briefing orchestration
 - `src/agents/risk_ai.py`: risk review step
@@ -59,11 +71,24 @@
 - `src/storage/briefing_history.py`: JSONL briefing history
 - `src/storage/outcome_history.py`: JSONL outcome history
 - `src/storage/news_history.py`: JSONL news archive
+- `src/storage/market_memory.py`: JSONL market memory and replay summaries
 - `src/learning/backtest.py`: Simple scoring and weighted backtest helpers
 - `src/learning/feedback.py`: Learning summary helpers with period snapshots
 - `src/simulation/replay.py`: Historical replay, validation, and simulation helpers
+- `src/simulation/validation.py`: Virtual-trading validation for candidates
+- `src/simulation/what_if.py`: Simple scenario simulator
+- `src/opportunity.py`: Ranked buy-candidate proposal helpers
+- `src/storage/market_memory.py`: Market memory persistence and similar-case retrieval
+- `src/knowledge_graph.py`: Lightweight causal graph builder
+- `src/personal.py`: Personal profile filters for candidate ranking
 - `src/evidence.py`: Structured evidence objects
 - `src/presenters/web.py`: Simple HTML presenter
 - `src/presenters/history.py`: HTML history presenter
+- `src/presenters/v6.py`: V6 HTML presenters
 - `tests/test_app.py`: API and web UI tests
 - `tests/test_simulation.py`: calibrated replay and 500-sample validation tests
+- `tests/test_opportunity.py`: candidate ranking and proposal API tests
+
+## Design Boundary
+- `/briefing` remains backward compatible for market overview and risk-first summary use.
+- Candidate-oriented features should be added in the next opportunity layer above the current briefing stack.

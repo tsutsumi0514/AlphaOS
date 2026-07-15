@@ -4,6 +4,7 @@
 AlphaOS is an AI-assisted investment decision support operating system for individual investors.
 Its goal is not to automate trading.
 Its goal is to help a human find buy candidates, see evidence clearly, understand risk, and decide quickly.
+Its primary output is candidate-oriented decision support, not market summary alone.
 
 ## Core Design Philosophy
 - Reduce information overload.
@@ -24,6 +25,7 @@ Current collectors fetch external inputs:
 - `src/watchlist.py` for watched symbols
 - `src/news.py` for latest market news
 - `src/collectors/briefing_inputs.py` for briefing input orchestration
+- The collector layer now accepts an optional `interval` so live views can switch between daily and minute-granularity market inputs.
 
 ### Cache Layer
 - `src/cache.py` provides a short TTL cache to avoid repeated fetches.
@@ -43,16 +45,19 @@ Current collectors fetch external inputs:
 - `src/agents/decision_ai.py` synthesizes those views into one decision support block.
 - `src/agents/contracts.py` defines the shared AgentDecision contract for agent outputs.
 - The next layer after `decision_ai` is the `Opportunity Engine`, which should turn evidence-backed decisions into ranked buy candidates and entry timing hints.
+- The Opportunity Engine should also filter out weak or illiquid candidates before ranking and keep counter-evidence short.
 
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.
 - `src/storage/outcome_history.py` stores realized outcomes in JSONL under the user's home directory by default.
 - `src/storage/news_history.py` stores archived market news in JSONL under the user's home directory by default.
+- `src/storage/market_memory.py` stores market memories and replay summaries in JSONL under the user's home directory by default.
 - `src/learning/backtest.py` scores briefings against later outcomes and aggregates weighted results.
 - `src/learning/feedback.py` summarizes recent learning performance for the next briefing and exposes period snapshots.
 
 ### Briefing Orchestration Layer
 - `src/briefing.py` merges signals into a compact briefing payload.
+- `src/briefing.py` must remain a thin orchestrator and not absorb candidate-ranking logic.
 - It derives:
   - `headline`
   - `market_state`
@@ -67,12 +72,17 @@ Current collectors fetch external inputs:
 
 ### API Layer
 - `src/app.py` exposes the `/briefing` endpoint.
+- `src/app.py` accepts `interval=1d` or `interval=1m` on the briefing and candidate-oriented routes.
 - `src/app.py` also exposes `/` as the simple Web presenter.
 - `src/app.py` also exposes `/history` and `/backtest` for learning loop review.
 - `src/app.py` also exposes `/history/view` as a simple Web review surface.
 - `src/app.py` also exposes `/outcome` and `/learning`.
 - `src/app.py` also exposes `/simulate` for historical replay and validation.
-- Planned API surfaces should include candidate-oriented views such as `/candidates` and `/daytrade-candidates`.
+- `src/app.py` also exposes `/validate` for opportunity candidate virtual-trading validation.
+- `src/app.py` also exposes `/memory` and `/memory/search` for market memory review and similar-case retrieval.
+- `src/app.py` also exposes `/what-if`, `/knowledge-graph`, and `/replay/compare` for V6 exploration.
+- `src/app.py` also exposes `/candidates` for ranked buy-candidate proposals.
+- Planned API surfaces should include candidate-oriented views such as `/daytrade-candidates`.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 
@@ -144,6 +154,18 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - LINE should not be the only UI target; the output must be presenter-friendly.
 - Risk should remain a first-class concern, not a derived side effect.
 
+## Preserved Base Assets
+- `Evidence`
+- `Confidence`
+- `RiskAI`
+- `ChairmanAI`
+- `Replay`
+- `Learning`
+- `Market Memory`
+- `Backtest`
+
+These base assets must remain intact while the opportunity layer is added above them.
+
 ## Current Roadmap
 ### v1
 - Morning briefing.
@@ -210,6 +232,7 @@ These folders exist so the current v1 design can grow into multi-agent and multi
 - Run `python -m pytest`.
 - Confirm the briefing endpoint still returns the full payload.
 - Confirm docs stay aligned with implementation.
+- Candidate-oriented work should also keep `docs/opportunity-spec.md` in sync.
 
 ## Public-Safe Status
 The repository was audited before public release.

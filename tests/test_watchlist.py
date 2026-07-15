@@ -20,7 +20,7 @@ def test_fetch_watchlist_status_returns_multiple_symbols(monkeypatch):
         seen_keys.append(key)
         return producer()
 
-    def fake_fetch(symbol):
+    def fake_fetch(symbol, interval):
         return [
             {
                 "symbol": symbol,
@@ -33,7 +33,7 @@ def test_fetch_watchlist_status_returns_multiple_symbols(monkeypatch):
     monkeypatch.setattr("src.watchlist.get_cached_value", fake_get_cached_value)
     monkeypatch.setattr("src.watchlist._fetch_watchlist_status_uncached", fake_fetch)
 
-    statuses = fetch_watchlist_status(["7203.T", "6758.T"])
+    statuses = fetch_watchlist_status(["7203.T", "6758.T"], interval="1m")
 
     assert [item["symbol"] for item in statuses] == ["7203.T", "6758.T"]
-    assert seen_keys == ["watchlist.7203.T", "watchlist.6758.T"]
+    assert seen_keys == ["watchlist.1m.7203.T", "watchlist.1m.6758.T"]

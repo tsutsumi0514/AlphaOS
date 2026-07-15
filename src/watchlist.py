@@ -10,6 +10,7 @@ from .cache import get_cached_value
 DEFAULT_WATCHLIST_SYMBOLS = ("7203.T", "6758.T", "9984.T")
 DEFAULT_WATCHLIST_SYMBOL = DEFAULT_WATCHLIST_SYMBOLS[0]
 _WATCHLIST_CACHE_TTL_SECONDS = 300
+_VALID_INTERVALS = {"1d", "1m", "2m", "5m", "15m", "30m", "60m"}
 
 
 def derive_watch_status(change_pct: float | None) -> str:
@@ -23,15 +24,19 @@ def derive_watch_status(change_pct: float | None) -> str:
     return "steady"
 
 
-def fetch_watchlist_status(symbols: Sequence[str] = DEFAULT_WATCHLIST_SYMBOLS) -> list[dict[str, Any]]:
+def fetch_watchlist_status(
+    symbols: Sequence[str] = DEFAULT_WATCHLIST_SYMBOLS,
+    interval: str = "1d",
+) -> list[dict[str, Any]]:
     """Fetch watchlist snapshots for one or more symbols."""
+    interval = _normalize_interval(interval)
     watchlist: list[dict[str, Any]] = []
 
     for symbol in symbols:
-        cache_key = f"watchlist.{symbol}"
+        cache_key = f"watchlist.{interval}.{symbol}"
         snapshot = get_cached_value(
             cache_key,
-            lambda symbol=symbol: _fetch_watchlist_status_uncached(symbol),
+            lambda symbol=symbol, interval=interval: _fetch_watchlist_status_uncached(symbol, interval),
             _WATCHLIST_CACHE_TTL_SECONDS,
         )
         if snapshot:
@@ -40,7 +45,7 @@ def fetch_watchlist_status(symbols: Sequence[str] = DEFAULT_WATCHLIST_SYMBOLS) -
     return watchlist
 
 
-def _fetch_watchlist_status_uncached(symbol: str) -> list[dict[str, Any]]:
+def _fetch_watchlist_status_uncached(symbol: str, interval: str) -> list[dict[str, Any]]:
     try:
         import yfinance as yf
     except Exception:
@@ -48,7 +53,7 @@ def _fetch_watchlist_status_uncached(symbol: str) -> list[dict[str, Any]]:
 
     try:
         ticker = yf.Ticker(symbol)
-        history: Any = ticker.history(period="5d", interval="1d")
+        history: Any = ticker.history(period="5d", interval=interval)
         if history is None or history.empty:
             return []
         close = history["Close"].dropna()
@@ -71,3 +76,10 @@ def _fetch_watchlist_status_uncached(symbol: str) -> list[dict[str, Any]]:
         ]
     except Exception:
         return []
+
+
+def _normalize_interval(interval: str | None) -> str:
+    if not isinstance(interval, str):
+        return "1d"
+    text = interval.strip().lower()
+    return text if text in _VALID_INTERVALS else "1d"
