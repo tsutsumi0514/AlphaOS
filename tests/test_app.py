@@ -510,26 +510,43 @@ def test_backtest_endpoint_scores_payload():
 
 
 def test_simulate_endpoint_returns_result(monkeypatch):
-    monkeypatch.setattr(
-        "src.app.run_replay_simulation",
-        lambda lookback_trading_days, symbols, period="5y", calibrate=True, validation_training_window=19, validation_evaluation_window=5: {
+    seen = {}
+
+    def fake_run_replay_simulation(
+        lookback_trading_days,
+        symbols,
+        period="5y",
+        calibrate=True,
+        validation_training_window=19,
+        validation_evaluation_window=5,
+        interval="1d",
+    ):
+        seen["interval"] = interval
+        return {
             "mode": "replay",
             "sample_size": 2,
+            "interval": interval,
             "summary": {"total": 2, "accuracy": 1.0, "weighted_accuracy": 1.0},
             "results": [
                 {"briefing_date": "2026-07-10", "outcome_date": "2026-07-11", "result": {"accuracy": 1.0}},
                 {"briefing_date": "2026-07-11", "outcome_date": "2026-07-12", "result": {"accuracy": 1.0}},
             ],
             "notes": ["ok"],
-        },
+        }
+
+    monkeypatch.setattr(
+        "src.app.run_replay_simulation",
+        fake_run_replay_simulation,
     )
 
-    response = client.post("/simulate", json={"lookback_trading_days": 2})
+    response = client.post("/simulate", json={"lookback_trading_days": 2, "interval": "1m"})
 
     assert response.status_code == 200
     data = response.json()
     assert data["mode"] == "replay"
     assert data["sample_size"] == 2
+    assert data["interval"] == "1m"
+    assert seen["interval"] == "1m"
 
 
 def test_validate_endpoint_returns_result(monkeypatch):

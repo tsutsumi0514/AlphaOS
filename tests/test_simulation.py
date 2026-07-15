@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from src.learning.backtest import ReplayThresholds
 from src.simulation.replay import _compose_replay_briefing
@@ -228,3 +228,61 @@ def test_run_replay_simulation_scores_historical_pairs(monkeypatch):
     assert result["results"][0]["briefing"]["decision_ai"]["agent"] == "ChairmanAI"
     assert result["results"][0]["briefing"]["news_item"]["title"].startswith("news for")
     assert result["validation"]["mode"] == "walk_forward"
+
+
+def test_run_replay_simulation_passes_minute_interval_to_loader(monkeypatch):
+    start = datetime(2026, 7, 8, 9, 0, tzinfo=timezone.utc)
+    points = [start + timedelta(minutes=offset) for offset in range(8)]
+
+    def build_series(base: float, step: float):
+        return [(point, base + step * index) for index, point in enumerate(points)]
+
+    series = {
+        "^N225": build_series(40000.0, 8.0),
+        "JPY=X": build_series(150.0, 0.15),
+        "7203.T": build_series(2500.0, 4.0),
+    }
+
+    seen: list[tuple[str, str, str]] = []
+
+    def loader(symbol: str, period: str, interval: str = "1d"):
+        seen.append((symbol, period, interval))
+        return series[symbol]
+
+    monkeypatch.setattr(
+        "src.simulation.replay.compose_briefing",
+        lambda source, learning_summary=None: {
+            "headline": "replay",
+            "market_state": source.get("market_state_override", "neutral"),
+            "fx_state": source.get("fx_state_override", "neutral"),
+            "news_item": source.get("news_item"),
+            "watchlist_status": source.get("watchlist_status_override", []),
+            "risk_alerts": [],
+            "key_changes": [],
+            "reasons": [],
+            "evidence": [],
+            "confidence": "medium",
+            "decision_ai": {"agent": "ChairmanAI", "views": []},
+        },
+    )
+    monkeypatch.setattr(
+        "src.simulation.replay.find_latest_news_before",
+        lambda target_date: {
+            "title": "minute news",
+            "source": "Archive",
+            "url": "https://example.com/archive",
+            "published_at": "2026-07-08T00:00:00+00:00",
+        },
+    )
+
+    result = run_replay_simulation(
+        lookback_trading_days=4,
+        symbols=("7203.T",),
+        period="5d",
+        history_loader=loader,
+        interval="1m",
+    )
+
+    assert result["interval"] == "1m"
+    assert result["sample_size"] > 0
+    assert any(interval == "1m" for _, _, interval in seen)

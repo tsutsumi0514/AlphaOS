@@ -21,6 +21,7 @@
 - [Project Bible](docs/Project_Bible.md)
 - [Architecture](docs/architecture.md)
 - [Opportunity Spec](docs/opportunity-spec.md)
+- [Interval Support Note](docs/interval-support.md)
 - [Codex Guide](prompts/Codex_Guide.md)
 - [ADR-0001](decisions/ADR-0001.md)
 - [Roadmap](roadmap/roadmap.md)
@@ -42,6 +43,7 @@
   - `http://127.0.0.1:8000/briefing`
 - Use minute-granularity inputs when needed:
   - `http://127.0.0.1:8000/briefing?interval=1m`
+- Replay and validation endpoints also accept `interval=1m` for daytrade-oriented checks.
 
 ## Test
 - Run tests:
@@ -56,6 +58,8 @@
 - `src/app.py`: market memory and similar-case search endpoints
 - `src/app.py`: what-if, knowledge graph, and replay comparison endpoints
 - `src/app.py`: interval-aware input collection for `1d` and `1m` views
+- `src/simulation/replay.py`: interval-aware replay and walk-forward validation
+- `src/simulation/validation.py`: interval-aware candidate validation for daytrade, swing, and long horizons
 - `src/agents/contracts.py`: shared AgentDecision contract
 - `src/agents/`: decision synthesis and future opportunity layer entry points
 - `src/collectors/briefing_inputs.py`: briefing input collection

@@ -440,22 +440,22 @@ def _entry_reason(
 ) -> str:
     if entry_timing == "buy_now":
         if liquidity == "high":
-            return "Strong evidence and liquid flow support action now."
-        return "Signals are aligned enough to act now."
+            return "Strong evidence and liquidity support action now."
+        return "Signals align enough to act now."
     if candidate_status == "avoid":
-        return "Risk and evidence are not aligned enough for entry."
+        return "Risk/evidence do not support entry."
     if liquidity == "thin":
-        return "Setup is valid, but liquidity is too thin to act now."
+        return "Setup is valid, but liquidity is too thin."
     if score >= 0.55:
         return "Setup is valid, but timing is not yet favorable."
-    return "Evidence is too weak for a candidate entry."
+    return "Evidence is too weak for entry."
 
 
 def _candidate_note(candidate: OpportunityCandidate) -> str | None:
     if candidate["status"] == "avoid":
-        return "Risk is higher than the current evidence supports."
+        return "Risk is higher than current evidence supports."
     if candidate["confidence"] == "low":
-        return "Evidence is thin; keep this as a watch item only."
+        return "Evidence is thin; keep this as watch only."
     if candidate["entry_timing"] == "wait":
         return "Timing is not yet favorable."
     return None

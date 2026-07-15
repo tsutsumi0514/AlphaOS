@@ -159,7 +159,8 @@ def _render_validation_page(report: Mapping[str, Any]) -> str:
         wf_cards.append("<li class='empty'>No walk-forward data yet.</li>")
 
     body = (
-        f"<p class='subhead'>Cost: {escape(_percent(report.get('transaction_cost_pct')))}. "
+        f"<p class='subhead'>Interval: {escape(_text(report.get('interval'), '1d'))}. "
+        f"Cost: {escape(_percent(report.get('transaction_cost_pct')))}. "
         f"Sample size: {escape(str(report.get('sample_size', 0)))}.</p>"
         "<div class='grid'>" + "".join(cards) + "</div>"
         "<section class='panel'><h2>Walk-forward</h2><ul>" + "".join(wf_cards) + "</ul></section>"

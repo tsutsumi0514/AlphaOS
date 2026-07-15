@@ -74,3 +74,9 @@ This makes later agent coordination, learning, and backtesting possible.
 - `v6`: Market Memory that helps candidate quality when it proves useful.
 - `v7`: Learning loop that improves candidate ranking with real outcomes.
 - `v8`: Knowledge Graph and personalization only if they improve candidate proposals.
+## Interval-Aware Data Flow
+
+- Live collection, replay, and validation now accept an `interval` argument.
+- Default behavior remains daily (`1d`) to preserve `/briefing` compatibility.
+- Minute granularity (`1m`) is used for daytrade-oriented checks without changing the main briefing contract.
+- Candidate proposal and presentation layers consume the same collected source shape, regardless of interval.

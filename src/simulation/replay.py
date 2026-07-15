@@ -16,7 +16,8 @@ from ..learning.backtest import (
 from ..storage.news_history import find_latest_news_before
 from ..watchlist import DEFAULT_WATCHLIST_SYMBOLS
 
-HistoryLoader = Callable[[str, str], list[tuple[date, float]]]
+HistoryLoader = Callable[[str, str], list[tuple[Any, float]]]
+VALID_INTERVALS = {"1d", "1m", "2m", "5m", "15m", "30m", "60m"}
 
 
 REPLAY_LEARNING_SUMMARY: dict[str, Any] = {
@@ -37,20 +38,23 @@ def run_replay_simulation(
     calibrate: bool = True,
     validation_training_window: int = 19,
     validation_evaluation_window: int = 5,
+    interval: str = "1d",
 ) -> dict[str, Any]:
-    """Run a replay simulation over historical daily market data."""
+    """Run a replay simulation over historical market data."""
     loader = history_loader or _load_close_history
     symbols = symbols or DEFAULT_WATCHLIST_SYMBOLS
+    interval = _normalize_interval(interval)
 
-    benchmark = loader("^N225", period)
-    fx = loader("JPY=X", period)
-    watchlist = {symbol: loader(symbol, period) for symbol in symbols}
+    benchmark = _load_history(loader, "^N225", period, interval)
+    fx = _load_history(loader, "JPY=X", period, interval)
+    watchlist = {symbol: _load_history(loader, symbol, period, interval) for symbol in symbols}
 
     records = _build_records(benchmark, fx, watchlist)
     if not records:
         return {
             "mode": "replay",
             "sample_size": 0,
+            "interval": interval,
             "summary": {"total": 0, "matched": 0, "checks": 0, "accuracy": 0.0},
             "calibration": {
                 "enabled": calibrate,
@@ -96,6 +100,7 @@ def run_replay_simulation(
     return {
         "mode": "replay",
         "sample_size": len(results),
+        "interval": interval,
         "summary": summary,
         "calibration": {
             "enabled": calibrate,
@@ -259,7 +264,7 @@ def _compose_replay_briefing(
     replay_source = dict(source)
     if "news_item" not in replay_source or replay_source.get("news_item") is None:
         replay_source["news_item"] = find_latest_news_before(
-            replay_source.get("briefing_date")
+            _news_lookup_target(replay_source.get("briefing_date"))
         )
 
     replay_source.update(_build_replay_overrides(source, thresholds))
@@ -650,14 +655,14 @@ def _percent_change(current: float | None, previous: float | None) -> float | No
     return ((current - previous) / previous) * 100.0
 
 
-def _load_close_history(symbol: str, period: str) -> list[tuple[date, float]]:
+def _load_close_history(symbol: str, period: str, interval: str = "1d") -> list[tuple[Any, float]]:
     try:
         import yfinance as yf
     except Exception:
         return []
 
     try:
-        history = yf.Ticker(symbol).history(period=period, interval="1d")
+        history = yf.Ticker(symbol).history(period=period, interval=_normalize_interval(interval))
     except Exception:
         return []
 
@@ -665,15 +670,57 @@ def _load_close_history(symbol: str, period: str) -> list[tuple[date, float]]:
         return []
 
     close = history["Close"].dropna()
-    rows: list[tuple[date, float]] = []
+    rows: list[tuple[Any, float]] = []
     for timestamp, value in close.items():
-        trade_date = _to_date(timestamp)
-        if trade_date is None:
+        trade_point = _to_time_point(timestamp, interval)
+        if trade_point is None:
             continue
-        rows.append((trade_date, float(value)))
+        rows.append((trade_point, float(value)))
 
     rows.sort(key=lambda row: row[0])
     return rows
+
+
+def _load_history(
+    loader: HistoryLoader,
+    symbol: str,
+    period: str,
+    interval: str,
+) -> list[tuple[Any, float]]:
+    try:
+        return loader(symbol, period, interval)
+    except TypeError:
+        return loader(symbol, period)
+
+
+def _normalize_interval(interval: str | None) -> str:
+    if not isinstance(interval, str):
+        return "1d"
+    text = interval.strip().lower()
+    return text if text in VALID_INTERVALS else "1d"
+
+
+def _news_lookup_target(value: Any) -> date | None:
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    return None
+
+
+def _to_time_point(value: Any, interval: str) -> date | datetime | None:
+    if interval == "1d":
+        return _to_date(value)
+    if isinstance(value, datetime):
+        return value
+    if hasattr(value, "to_pydatetime"):
+        try:
+            return value.to_pydatetime()
+        except Exception:
+            return None
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
+    return None
 
 
 def _to_date(value: Any) -> date | None:

@@ -51,6 +51,7 @@ def _run_validation_report(payload: dict[str, object]):
     validation_evaluation_window = payload.get("validation_evaluation_window", 5)
     transaction_cost_pct = payload.get("transaction_cost_pct", 0.002)
     horizons = payload.get("horizons", ["daytrade", "swing", "long"])
+    interval = payload.get("interval", "1d")
 
     if not isinstance(lookback, int) or lookback < 1:
         lookback = 500
@@ -79,6 +80,9 @@ def _run_validation_report(payload: dict[str, object]):
     if not isinstance(transaction_cost_pct, (int, float)) or transaction_cost_pct < 0:
         transaction_cost_pct = 0.002
 
+    if not isinstance(interval, str) or not interval.strip():
+        interval = "1d"
+
     if isinstance(horizons, list):
         requested_horizons = tuple(
             horizon.strip().lower()
@@ -97,6 +101,7 @@ def _run_validation_report(payload: dict[str, object]):
         validation_evaluation_window=validation_evaluation_window,
         transaction_cost_pct=float(transaction_cost_pct),
         horizons=requested_horizons or ("daytrade", "swing", "long"),
+        interval=interval,
     )
     if result["sample_size"] == 0:
         raise HTTPException(status_code=503, detail="insufficient historical data for validation")
@@ -404,6 +409,7 @@ def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
     calibrate = payload.get("calibrate", True)
     validation_training_window = payload.get("validation_training_window", 19)
     validation_evaluation_window = payload.get("validation_evaluation_window", 5)
+    interval = payload.get("interval", "1d")
 
     if not isinstance(lookback, int) or lookback < 1:
         lookback = 500
@@ -429,6 +435,9 @@ def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
     if not isinstance(validation_evaluation_window, int) or validation_evaluation_window < 1:
         validation_evaluation_window = 5
 
+    if not isinstance(interval, str) or not interval.strip():
+        interval = "1d"
+
     result = run_replay_simulation(
         lookback_trading_days=lookback,
         symbols=requested_symbols or (),
@@ -436,6 +445,7 @@ def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
         calibrate=calibrate,
         validation_training_window=validation_training_window,
         validation_evaluation_window=validation_evaluation_window,
+        interval=interval,
     )
     if result["sample_size"] == 0:
         raise HTTPException(status_code=503, detail="insufficient historical data for replay")
@@ -461,6 +471,7 @@ def get_validate_view(
     validation_evaluation_window: int = Query(default=5, ge=1, le=60),
     transaction_cost_pct: float = Query(default=0.002, ge=0.0, le=0.1),
     horizons: str | None = Query(default=None, description="Comma-separated horizons"),
+    interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
 ):
     payload: dict[str, object] = {
         "lookback_trading_days": lookback_trading_days,
@@ -470,6 +481,7 @@ def get_validate_view(
         "validation_training_window": validation_training_window,
         "validation_evaluation_window": validation_evaluation_window,
         "transaction_cost_pct": transaction_cost_pct,
+        "interval": interval,
         "horizons": list(_parse_csv_list(horizons)) if isinstance(horizons, str) and horizons.strip() else ["daytrade", "swing", "long"],
     }
     report = _run_validation_report(payload)

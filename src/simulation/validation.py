@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from datetime import date
+from datetime import date, datetime
 from statistics import mean, median, pstdev
 from typing import Any
 
@@ -15,7 +15,8 @@ from .replay import _compose_replay_briefing
 from .replay import _load_close_history
 from .replay import calibrate_replay_thresholds
 
-HistoryLoader = Callable[[str, str], list[tuple[date, float]]]
+HistoryLoader = Callable[[str, str], list[tuple[Any, float]]]
+VALID_INTERVALS = {"1d", "1m", "2m", "5m", "15m", "30m", "60m"}
 
 DEFAULT_HORIZON_HOLDING_DAYS = {
     "daytrade": 1,
@@ -40,15 +41,17 @@ def run_opportunity_validation(
     validation_evaluation_window: int = 5,
     transaction_cost_pct: float = 0.002,
     horizons: Sequence[str] = ("daytrade", "swing", "long"),
+    interval: str = "1d",
 ) -> dict[str, Any]:
     """Validate candidate ranking with a simple virtual-trading simulator."""
     loader = history_loader or _load_close_history
     symbols = symbols or DEFAULT_WATCHLIST_SYMBOLS
     horizon_names = _normalize_horizons(horizons)
+    interval = _normalize_interval(interval)
 
-    benchmark = loader("^N225", period)
-    fx = loader("JPY=X", period)
-    watchlist = {symbol: loader(symbol, period) for symbol in symbols}
+    benchmark = _load_history(loader, "^N225", period, interval)
+    fx = _load_history(loader, "JPY=X", period, interval)
+    watchlist = {symbol: _load_history(loader, symbol, period, interval) for symbol in symbols}
 
     records = _build_records(benchmark, fx, watchlist)
     if not records:
@@ -58,6 +61,7 @@ def run_opportunity_validation(
             horizons=horizon_names,
             validation_training_window=validation_training_window,
             validation_evaluation_window=validation_evaluation_window,
+            interval=interval,
         )
 
     window_records = records[-lookback_trading_days:] if lookback_trading_days > 0 else records
@@ -91,6 +95,7 @@ def run_opportunity_validation(
     return {
         "mode": "opportunity_validation",
         "sample_size": len(window_records),
+        "interval": interval,
         "calibration": {
             "enabled": calibrate,
             "thresholds": thresholds.__dict__,
@@ -109,8 +114,8 @@ def run_opportunity_validation(
 def _validate_horizon(
     records: list[dict[str, Any]],
     thresholds: ReplayThresholds,
-    price_maps: Mapping[str, list[tuple[date, float]]],
-    benchmark_map: Mapping[date, float],
+    price_maps: Mapping[str, list[tuple[Any, float]]],
+    benchmark_map: Mapping[Any, float],
     *,
     horizon: str,
     transaction_cost_pct: float,
@@ -187,8 +192,8 @@ def _validate_horizon(
 def _walk_forward_validation(
     records: list[dict[str, Any]],
     *,
-    price_maps: Mapping[str, list[tuple[date, float]]],
-    benchmark_map: Mapping[date, float],
+    price_maps: Mapping[str, list[tuple[Any, float]]],
+    benchmark_map: Mapping[Any, float],
     horizons: Sequence[str],
     transaction_cost_pct: float,
     training_window: int,
@@ -546,13 +551,32 @@ def _group_risk_analysis(trades: Sequence[Mapping[str, Any]]) -> dict[str, dict[
 
 
 def _build_price_maps(
-    benchmark: list[tuple[date, float]],
-    watchlist: Mapping[str, list[tuple[date, float]]],
-) -> dict[str, list[tuple[date, float]]]:
+    benchmark: list[tuple[Any, float]],
+    watchlist: Mapping[str, list[tuple[Any, float]]],
+) -> dict[str, list[tuple[Any, float]]]:
     price_maps = {"^N225": sorted(benchmark, key=lambda row: row[0])}
     for symbol, series in watchlist.items():
         price_maps[symbol] = sorted(series, key=lambda row: row[0])
     return price_maps
+
+
+def _load_history(
+    loader: HistoryLoader,
+    symbol: str,
+    period: str,
+    interval: str,
+) -> list[tuple[Any, float]]:
+    try:
+        return loader(symbol, period, interval)
+    except TypeError:
+        return loader(symbol, period)
+
+
+def _normalize_interval(interval: str | None) -> str:
+    if not isinstance(interval, str):
+        return "1d"
+    text = interval.strip().lower()
+    return text if text in VALID_INTERVALS else "1d"
 
 
 def _max_drawdown_pct(prices: Sequence[float]) -> float:
@@ -625,10 +649,12 @@ def _empty_validation_result(
     horizons: Sequence[str],
     validation_training_window: int,
     validation_evaluation_window: int,
+    interval: str,
 ) -> dict[str, Any]:
     return {
         "mode": "opportunity_validation",
         "sample_size": 0,
+        "interval": interval,
         "calibration": {
             "enabled": calibrate,
             "thresholds": ReplayThresholds().__dict__,

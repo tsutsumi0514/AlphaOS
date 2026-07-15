@@ -238,3 +238,9 @@ These base assets must remain intact while the opportunity layer is added above 
 The repository was audited before public release.
 Git history was sanitized to remove email metadata.
 No secrets were found in the tracked source at the time of the audit.
+## Interval Support
+
+- `/briefing` keeps the existing daily behavior when `interval` is omitted.
+- `interval=1m` is supported for daytrade-oriented data collection and validation.
+- Replay and walk-forward validation reuse the same interval-aware loaders as live collection.
+- The `/briefing` contract remains backward compatible; existing keys and summary behavior stay stable.
