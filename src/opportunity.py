@@ -41,6 +41,7 @@ class OpportunityExclusion(TypedDict):
 class OpportunityPool(TypedDict):
     candidates: list[OpportunityCandidate]
     excluded: list[OpportunityExclusion]
+    summary: dict[str, Any]
 
 
 def build_opportunity_candidates(
@@ -62,7 +63,18 @@ def evaluate_candidate_pool(
     horizon_value = _normalize_horizon(horizon)
     watchlist_items = _watchlist_items(briefing)
     if not watchlist_items:
-        return {"candidates": [], "excluded": []}
+        return {
+            "candidates": [],
+            "excluded": [],
+            "summary": {
+                "total_candidates": 0,
+                "excluded_count": 0,
+                "ranked_count": 0,
+                "buy_now_count": 0,
+                "wait_count": 0,
+                "avoid_count": 0,
+            },
+        }
 
     candidates: list[OpportunityCandidate] = []
     excluded: list[OpportunityExclusion] = []
@@ -86,9 +98,19 @@ def evaluate_candidate_pool(
     candidates.sort(key=lambda candidate: candidate["score"], reverse=True)
     for index, candidate in enumerate(candidates, start=1):
         candidate["rank"] = index
+    ranked_candidates = candidates[: max(limit, 0)]
+    summary = {
+        "total_candidates": len(watchlist_items),
+        "excluded_count": len(excluded),
+        "ranked_count": len(ranked_candidates),
+        "buy_now_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "buy_now"),
+        "wait_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "wait"),
+        "avoid_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "avoid"),
+    }
     return {
-        "candidates": candidates[: max(limit, 0)],
+        "candidates": ranked_candidates,
         "excluded": excluded,
+        "summary": summary,
     }
 
 

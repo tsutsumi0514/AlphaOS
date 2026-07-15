@@ -424,6 +424,20 @@ def test_candidates_endpoint_applies_personal_profile(monkeypatch):
     assert data["top_candidate"]["symbol"] == data["candidates"][0]["symbol"]
 
 
+def test_candidates_endpoint_includes_opportunity_summary():
+    response = client.get("/candidates?limit=3")
+
+    assert response.status_code == 200
+    data = response.json()
+    summary = data["opportunity_summary"]
+    assert summary["ranked_count"] == data["count"]
+    assert summary["excluded_count"] == data["rejected_count"]
+    assert summary["total_candidates"] >= summary["ranked_count"]
+    assert "buy_now_count" in summary
+    assert "wait_count" in summary
+    assert "avoid_count" in summary
+
+
 def test_what_if_endpoint_returns_scenarios():
     response = client.post("/what-if", json={"scenarios": ["yen_appreciation", "rate_cut"]})
 

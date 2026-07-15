@@ -322,6 +322,7 @@ def get_candidates(
     return {
         "count": len(personalized["candidates"]),
         "rejected_count": len(candidate_pool["excluded"]),
+        "opportunity_summary": candidate_pool["summary"],
         "horizon": "daytrade" if horizon.strip().lower() == "daytrade" else "swing",
         "personal_profile": personalized["profile"],
         "personal_notes": personalized["notes"],
