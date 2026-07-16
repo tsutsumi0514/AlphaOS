@@ -11,6 +11,8 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - `decision_ai`: Multi-view synthesis from ChairmanAI.
 - `learning_summary`: Recent learning performance and period snapshots.
 - `candidate_learning_profile`: Candidate-specific learning bias derived from the current learning summary.
+- `data_health`: Optional diagnostics for upstream data availability.
+- `data_warnings`: Optional short warnings when upstream inputs fail.
 - `replay_summary`: Historical replay and validation signals when available.
 - `personal_profile`: User profile used for light ranking adjustments and filtering.
 - `watchlist_status`: Current tracked symbols and their states.
@@ -46,6 +48,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - Break ties with risk first, then evidence strength, then timing confidence.
 - Candidate exclusion should remove low-confidence, thin-liquidity, and low-evidence noise.
 - Learning should adjust ranking only through a small, explainable bias derived from past outcomes.
+- Learning may nudge ranking slightly via `score_adjustment`, `confidence_adjustment`, and `support_gap`, but it must stay explainable.
 - Graph context should stay lightweight and explanatory, not become a second ranking engine.
 - Personalization should only nudge ranking and filtering, not override the evidence-first core.
 

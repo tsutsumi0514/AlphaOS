@@ -15,6 +15,7 @@ The live briefing and candidate routes can also accept an `interval` such as `1d
 The current v4 step adds a multi-agent decision view and a historical replay simulation endpoint with in-window calibration, baseline comparison, and 500-sample walk-forward validation.
 The next major layer is `Opportunity Engine`, which should translate decision output into ranked buy candidates, filter out weak or illiquid items, and provide entry timing hints.
 The current candidate layer exposes both `/candidates` and `/daytrade-candidates` so the shared core can branch by horizon without duplicating collection logic.
+Public-safe operation can hide internal review routes such as history, memory, validation, and replay comparison when `ALPHAOS_PUBLIC_MODE=1`.
 
 ## Target Layering
 
@@ -51,6 +52,7 @@ flowchart TD
 - `storage/news_history.py`: archived market news for replay.
 - `knowledge_graph.py`: lightweight causal graph helpers.
 - `personal.py`: profile-aware candidate filtering helpers.
+- `data_health` / `data_warnings`: lightweight diagnostics that surface upstream degradation without stopping the main briefing.
 - `collectors/briefing_inputs.py`: current collector orchestration for the briefing inputs.
 - `agents/chairman_ai.py`: current top-level briefing coordinator.
 - `agents/risk_ai.py`: current risk review step.
@@ -75,6 +77,7 @@ This makes later agent coordination, learning, and backtesting possible.
 - `v6`: Market Memory that helps candidate quality when it proves useful.
 - `v7`: Learning loop that improves candidate ranking with real outcomes and feeds learning summaries and training-window profiles back into candidate scoring.
 - `v8`: Knowledge Graph and personalization only if they improve candidate proposals, with graph context surfaced in candidate review when useful.
+- `v9`: Public-safe operation, failure visibility, replay/validation hardening, and small quality/UI refinements.
 ## Interval-Aware Data Flow
 
 - Live collection, replay, and validation now accept an `interval` argument.

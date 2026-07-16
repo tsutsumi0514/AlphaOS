@@ -25,6 +25,8 @@ DEFAULT_BRIEFING: Briefing = {
     "reasons": [],
     "evidence": [],
     "confidence": "low",
+    "data_health": {"status": "empty", "available_inputs": 0},
+    "data_warnings": [],
 }
 
 
@@ -118,6 +120,8 @@ def build_briefing(source: Mapping[str, Any] | None = None) -> Briefing:
         "reasons": list(DEFAULT_BRIEFING["reasons"]),
         "evidence": list(DEFAULT_BRIEFING["evidence"]),
         "confidence": DEFAULT_BRIEFING["confidence"],
+        "data_health": dict(DEFAULT_BRIEFING["data_health"]),
+        "data_warnings": list(DEFAULT_BRIEFING["data_warnings"]),
     }
 
     if source is None:

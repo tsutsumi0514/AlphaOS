@@ -169,6 +169,24 @@ def test_briefing_endpoint_uses_fetched_news():
     assert "News: 日経平均、寄り付き後に上昇 (Google News)." in data["key_changes"]
 
 
+def test_briefing_endpoint_exposes_data_warnings_on_partial_failures(monkeypatch):
+    monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", lambda: (_ for _ in ()).throw(RuntimeError("fx down")))
+    monkeypatch.setattr(
+        "src.collectors.briefing_inputs.fetch_watchlist_status",
+        lambda symbols: (_ for _ in ()).throw(RuntimeError("watchlist down")),
+    )
+
+    response = client.get("/briefing")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["data_health"]["status"] == "degraded"
+    assert data["data_warnings"]
+    assert any("usd_jpy unavailable" in item for item in data["data_warnings"]) or any(
+        "watchlist_status unavailable" in item for item in data["data_warnings"]
+    )
+
+
 def test_briefing_endpoint_accepts_watchlist_symbol(monkeypatch):
     monkeypatch.setattr(
         "src.collectors.briefing_inputs.fetch_watchlist_status",
@@ -285,6 +303,19 @@ def test_history_endpoint_returns_recent_records(monkeypatch):
     assert data["count"] == 2
     assert len(data["records"]) == 1
     assert data["records"][0]["briefing_id"] == "two"
+
+
+def test_public_mode_hides_internal_routes(monkeypatch):
+    monkeypatch.setenv("ALPHAOS_PUBLIC_MODE", "1")
+
+    assert client.get("/history").status_code == 404
+    assert client.get("/history/view").status_code == 404
+    assert client.get("/memory").status_code == 404
+    assert client.get("/memory/search").status_code == 404
+    assert client.post("/validate", json={}).status_code == 404
+    assert client.get("/validate/view").status_code == 404
+    assert client.post("/simulate", json={}).status_code == 404
+    assert client.get("/replay/compare").status_code == 404
 
 
 def test_history_view_returns_html(monkeypatch):

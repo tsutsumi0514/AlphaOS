@@ -181,6 +181,7 @@ def _render_page(briefing: Mapping[str, Any]) -> str:
           <div class="chip confidence"><strong>Confidence</strong> {escape(confidence)}</div>
         </div>
       </div>
+      {_render_data_quality_section(briefing.get("data_health"), briefing.get("data_warnings"))}
       <div class="grid">
         { _render_decision_section(briefing.get("decision_ai")) }
         { _render_section("Risk Alerts", briefing.get("risk_alerts")) }
@@ -287,6 +288,32 @@ def _render_learning_section(value: Any) -> str:
         "<section><h2>Learning</h2>"
         f"<p class='empty'>status: {escape(status)}, sample: {escape(str(sample_size))}, accuracy: {escape(accuracy_text)}</p>"
         f"{rendered_notes}"
+        "</section>"
+    )
+
+
+def _render_data_quality_section(data_health: Any, warnings: Any) -> str:
+    status = "ok"
+    available_inputs = 0
+    interval = "1d"
+    warning_items: list[str] = []
+
+    if isinstance(data_health, Mapping):
+        status = _text(data_health.get("status"), "ok")
+        available_inputs = int(data_health.get("available_inputs", 0) or 0)
+        interval = _text(data_health.get("interval"), "1d")
+    if isinstance(warnings, list):
+        warning_items = [item for item in (_text(warning, "") for warning in warnings) if item]
+
+    if status == "ok" and not warning_items:
+        return ""
+
+    warning_lines = "".join(f"<li>{escape(item)}</li>" for item in warning_items[:4]) or "<li class='empty'>None</li>"
+    return (
+        "<section>"
+        "<h2>Data Quality</h2>"
+        f"<p class='empty'>status: {escape(status)}, available inputs: {escape(str(available_inputs))}, interval: {escape(interval)}</p>"
+        f"<ul>{warning_lines}</ul>"
         "</section>"
     )
 

@@ -1,4 +1,5 @@
 import logging
+import os
 from datetime import datetime, timezone
 
 from fastapi import Body, FastAPI, HTTPException, Query
@@ -35,12 +36,28 @@ from .storage.news_history import record_news_snapshot
 
 app = FastAPI(title="AlphaOS")
 logger = logging.getLogger(__name__)
+PUBLIC_MODE_ENV = "ALPHAOS_PUBLIC_MODE"
 
 
 def _parse_csv_list(value: object) -> tuple[str, ...]:
     if not isinstance(value, str) or not value.strip():
         return ()
     return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+def _public_mode_enabled() -> bool:
+    return _text(os.environ.get(PUBLIC_MODE_ENV)).lower() in {"1", "true", "yes", "on"}
+
+
+def _require_internal_surface() -> None:
+    if _public_mode_enabled():
+        raise HTTPException(status_code=404, detail="not found")
+
+
+def _text(value: object) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    return ""
 
 
 def _run_validation_report(payload: dict[str, object]):
@@ -173,6 +190,7 @@ def get_homepage(
 
 @app.get("/history")
 def get_history(limit: int = Query(default=20, ge=1, le=200)):
+    _require_internal_surface()
     records = load_briefing_history()
     recent_records = records[-limit:]
     return {"count": len(records), "records": recent_records}
@@ -180,6 +198,7 @@ def get_history(limit: int = Query(default=20, ge=1, le=200)):
 
 @app.get("/history/view", response_class=HTMLResponse)
 def get_history_view(limit: int = Query(default=10, ge=1, le=200)):
+    _require_internal_surface()
     records = load_briefing_history()
     recent_records = records[-limit:]
     learning_summary = build_learning_summary()
@@ -188,6 +207,7 @@ def get_history_view(limit: int = Query(default=10, ge=1, le=200)):
 
 @app.post("/backtest")
 def post_backtest(payload: dict[str, object] = Body(default_factory=dict)):
+    _require_internal_surface()
     history = payload.get("history", [])
     outcomes = payload.get("outcomes", {})
 
@@ -202,6 +222,7 @@ def post_backtest(payload: dict[str, object] = Body(default_factory=dict)):
 
 @app.post("/outcome")
 def post_outcome(payload: dict[str, object] = Body(default_factory=dict)):
+    _require_internal_surface()
     briefing_id = payload.get("briefing_id")
     if not isinstance(briefing_id, str) or not briefing_id.strip():
         raise HTTPException(status_code=400, detail="briefing_id is required")
@@ -232,11 +253,13 @@ def post_outcome(payload: dict[str, object] = Body(default_factory=dict)):
 
 @app.get("/learning")
 def get_learning():
+    _require_internal_surface()
     return build_learning_summary()
 
 
 @app.get("/memory")
 def get_memory(limit: int = Query(default=20, ge=1, le=200)):
+    _require_internal_surface()
     records = load_market_memory()
     recent_records = records[-limit:]
     return {"count": len(records), "records": recent_records}
@@ -257,6 +280,7 @@ def get_memory_search(
     ),
     interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
 ):
+    _require_internal_surface()
     source = collect_briefing_source(
         usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval=interval
     )
@@ -328,6 +352,8 @@ def _build_candidate_report(
         "horizon": strategy_mode,
         "learning_summary": briefing.get("learning_summary"),
         "candidate_learning_profile": briefing.get("candidate_learning_profile"),
+        "data_health": briefing.get("data_health"),
+        "data_warnings": briefing.get("data_warnings", []),
         "candidate_graph": candidate_graph,
         "candidate_graph_summary": {
             "node_count": len(graph_nodes) if isinstance(graph_nodes, list) else 0,
@@ -546,6 +572,7 @@ def get_replay_compare(
     limit: int = Query(default=5, ge=1, le=10),
     interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
 ):
+    _require_internal_surface()
     source = collect_briefing_source(None, None, None, None, interval=interval)
     briefing = compose_briefing(source)
     similar_cases = find_similar_market_memory(briefing, limit=limit)
@@ -565,6 +592,7 @@ def get_replay_compare(
 
 @app.post("/simulate")
 def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
+    _require_internal_surface()
     lookback = payload.get("lookback_trading_days", 500)
     period = payload.get("period", "5y")
     symbols = payload.get("symbols")
@@ -620,6 +648,7 @@ def post_simulate(payload: dict[str, object] = Body(default_factory=dict)):
 
 @app.post("/validate")
 def post_validate(payload: dict[str, object] = Body(default_factory=dict)):
+    _require_internal_surface()
     return _run_validation_report(payload)
 
 
@@ -635,6 +664,7 @@ def get_validate_view(
     horizons: str | None = Query(default=None, description="Comma-separated horizons"),
     interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
 ):
+    _require_internal_surface()
     payload: dict[str, object] = {
         "lookback_trading_days": lookback_trading_days,
         "period": period,

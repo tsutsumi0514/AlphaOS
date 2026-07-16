@@ -26,10 +26,12 @@ def test_collect_briefing_source_returns_partial_data(monkeypatch):
 
     source = collect_briefing_source(watchlist_symbol="9984.T")
 
-    assert source == {
-        "usd_jpy": 156.2,
-        "watchlist_status": [{"symbol": "9984.T", "status": "strong"}],
-    }
+    assert source["usd_jpy"] == 156.2
+    assert source["watchlist_status"] == [{"symbol": "9984.T", "status": "strong"}]
+    assert source["data_health"]["status"] == "ok"
+    assert source["data_health"]["available_inputs"] == 2
+    assert source["data_health"]["requested_watchlist_symbols"] == ["9984.T"]
+    assert "data_warnings" not in source
 
 
 def test_collect_briefing_source_survives_failures(monkeypatch):
@@ -50,7 +52,14 @@ def test_collect_briefing_source_survives_failures(monkeypatch):
         lambda: (_ for _ in ()).throw(RuntimeError("news down")),
     )
 
-    assert collect_briefing_source() is None
+    source = collect_briefing_source()
+
+    assert source is not None
+    assert source["data_health"]["status"] == "degraded"
+    assert source["data_health"]["available_inputs"] == 0
+    assert source["data_warnings"]
+    assert any("usd_jpy unavailable" in warning for warning in source["data_warnings"])
+    assert any("market_change_pct unavailable" in warning for warning in source["data_warnings"])
 
 
 def test_collect_briefing_source_passes_interval_to_fetchers(monkeypatch):

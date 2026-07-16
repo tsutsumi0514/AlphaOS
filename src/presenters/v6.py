@@ -187,6 +187,8 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     learning_summary = report.get("learning_summary", {})
     candidate_learning_profile = report.get("candidate_learning_profile", {})
     candidate_graph = report.get("candidate_graph", {})
+    data_health = report.get("data_health", {})
+    data_warnings = report.get("data_warnings", [])
     cards = []
     if isinstance(candidates, list):
         for candidate in candidates:
@@ -254,6 +256,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     similar_cases_block = _render_similar_cases_block(similar_cases)
     learning_block = _render_learning_block(learning_summary, candidate_learning_profile)
     graph_block = _render_graph_block(candidate_graph)
+    data_block = _render_data_block(data_health, data_warnings)
     profile_line = _render_personal_profile_list(personal_profile)
     notes_line = "".join(f"<li>{escape(item)}</li>" for item in _list_items(personal_notes))
     if not notes_line:
@@ -265,6 +268,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
         f"Strategy: {escape(_text(report.get('strategy_mode'), _text(report.get('horizon'), 'swing')))}. "
         f"Mode: {escape(_text(report.get('automation_mode'), 'advisory_only'))}.</p>"
         f"{top_candidate_block}"
+        f"{data_block}"
         f"{learning_block}"
         f"{graph_block}"
         f"{similar_cases_block}"
@@ -443,6 +447,32 @@ def _render_learning_block(value: Mapping[str, Any] | Any, candidate_profile: Ma
     if not items:
         items.append("<li class='empty'>No learning data yet.</li>")
     return "<section class='panel'><h2>Learning</h2><ul>" + "".join(items) + "</ul></section>"
+
+
+def _render_data_block(data_health: Any, data_warnings: Any) -> str:
+    if not isinstance(data_health, Mapping) and not _list_items(data_warnings):
+        return "<section class='panel'><h2>Data Quality</h2><p class='empty'>None</p></section>"
+
+    status = _text(data_health.get("status"), "ok") if isinstance(data_health, Mapping) else "ok"
+    warnings = _list_items(data_warnings)
+    if status == "ok" and not warnings:
+        return ""
+
+    items: list[str] = []
+    if isinstance(data_health, Mapping):
+        for key in ("status", "available_inputs", "interval"):
+            item = data_health.get(key)
+            if item is None:
+                continue
+            items.append(f"<li><strong>{escape(key)}</strong>: {escape(str(item))}</li>")
+
+    if warnings:
+        items.extend(f"<li>{escape(_text(warning, ''))}</li>" for warning in warnings[:4])
+
+    if not items:
+        items.append("<li class='empty'>None</li>")
+
+    return "<section class='panel'><h2>Data Quality</h2><ul>" + "".join(items) + "</ul></section>"
 
 
 def _render_graph_block(value: Mapping[str, Any] | Any) -> str:

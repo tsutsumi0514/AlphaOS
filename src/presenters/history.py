@@ -245,6 +245,8 @@ def _render_record_card(record: Mapping[str, Any]) -> str:
     risk_alerts = _list_items(briefing_map.get("risk_alerts"))
     key_changes = _list_items(briefing_map.get("key_changes"))
     reasons = _list_items(briefing_map.get("reasons"))
+    data_health = briefing_map.get("data_health")
+    data_warnings = _list_items(briefing_map.get("data_warnings"))
 
     return f"""
       <article class="record">
@@ -262,6 +264,7 @@ def _render_record_card(record: Mapping[str, Any]) -> str:
             <span class="chip">Confidence: {escape(confidence)}</span>
           </div>
         </div>
+        {_render_data_section(data_health, data_warnings)}
         {_render_item_section("Risk alerts", risk_alerts)}
         {_render_item_section("Key changes", key_changes)}
         {_render_item_section("Reasons", reasons)}
@@ -278,6 +281,26 @@ def _render_item_section(title: str, value: Any) -> str:
         f"<div class='section'><h3>{escape(title)}</h3><ul>"
         + "".join(f"<li>{escape(_text(item, ''))}</li>" for item in items[:3])
         + "</ul></div>"
+    )
+
+
+def _render_data_section(data_health: Any, data_warnings: Any) -> str:
+    if not isinstance(data_health, Mapping) and not data_warnings:
+        return ""
+
+    status = _text(data_health.get("status"), "unknown") if isinstance(data_health, Mapping) else "unknown"
+    available_inputs = data_health.get("available_inputs", 0) if isinstance(data_health, Mapping) else 0
+    interval = _text(data_health.get("interval"), "1d") if isinstance(data_health, Mapping) else "1d"
+    warnings = _list_items(data_warnings)
+    if status == "ok" and not warnings:
+        return ""
+    warning_markup = "".join(f"<li>{escape(_text(item, ''))}</li>" for item in warnings[:3]) or "<li class='empty'>None</li>"
+    return (
+        "<div class='section'>"
+        "<h3>Data quality</h3>"
+        f"<p class='empty'>status: {escape(status)}, available: {escape(str(available_inputs))}, interval: {escape(interval)}</p>"
+        f"<ul>{warning_markup}</ul>"
+        "</div>"
     )
 
 

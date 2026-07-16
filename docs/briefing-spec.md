@@ -15,6 +15,8 @@ This output is a compact support layer, not the final buy-candidate ranking.
 - `reasons`: Short statements explaining why the current view was produced.
 - `confidence`: A simple confidence label, such as low, medium, or high.
 - `evidence`: Structured proof items that support the current view.
+- `data_health`: Optional diagnostic state for external input availability and freshness.
+- `data_warnings`: Optional short warnings when one or more upstream inputs fail.
 
 ## Agent Decision Contract
 - `agent`: Name of the agent that produced the view.

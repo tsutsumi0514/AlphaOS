@@ -239,10 +239,12 @@ def _walk_forward_validation(
                 "start": train_records[0]["briefing_date"].isoformat(),
                 "end": train_records[-1]["briefing_date"].isoformat(),
             },
+            "training_sample_size": len(train_records),
             "eval_range": {
                 "start": eval_records[0]["briefing_date"].isoformat(),
                 "end": eval_records[-1]["outcome_date"].isoformat(),
             },
+            "evaluation_sample_size": len(eval_records),
             "horizons": {},
         }
 

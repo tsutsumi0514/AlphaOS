@@ -47,6 +47,8 @@ Current collectors fetch external inputs:
 - The next layer after `decision_ai` is the `Opportunity Engine`, which should turn evidence-backed decisions into ranked buy candidates and entry timing hints.
 - The Opportunity Engine should also filter out weak or illiquid candidates before ranking and keep counter-evidence short.
 - Candidate cards should expose a one-line `candidate_reason`, `counter_evidence`, and a simple liquidity state.
+- Diagnostic fields such as `data_health` and `data_warnings` should surface when upstream sources degrade.
+- When `ALPHAOS_PUBLIC_MODE=1`, internal review routes should stay hidden from the public surface.
 
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.

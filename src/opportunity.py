@@ -259,6 +259,7 @@ def _candidate_score(
 ) -> float:
     score = _base_score(item.get("status"))
     score += _learning_score_adjustment(briefing, learning_profile)
+    score += _support_gap_adjustment(learning_profile)
 
     market_state = _text(briefing.get("market_state"))
     if market_state == "bullish":
@@ -329,6 +330,15 @@ def _learning_score_adjustment(
     if status == "weak":
         return -0.04
     return 0.0
+
+
+def _support_gap_adjustment(learning_profile: Mapping[str, Any]) -> float:
+    support_gap = _numeric_or_none(learning_profile.get("support_gap"))
+    if support_gap is None:
+        return 0.0
+    if support_gap > 0:
+        return min(support_gap * 0.5, 0.03)
+    return max(support_gap * 0.5, -0.03)
 
 
 def _candidate_confidence(

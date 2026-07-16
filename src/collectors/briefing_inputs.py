@@ -34,18 +34,27 @@ def collect_briefing_source(
 ) -> dict[str, object] | None:
     """Collect the current briefing inputs with soft failure handling."""
     source: dict[str, object] = {}
+    warnings: list[str] = []
     interval = _normalize_interval(interval)
 
     if usd_jpy is None:
-        usd_jpy = _safe_call(fetch_usd_jpy_rate, interval)
+        usd_jpy = _safe_call(fetch_usd_jpy_rate, interval, warnings=warnings, label="usd_jpy")
     if market_change_pct is None:
-        market_change_pct = _safe_call(fetch_nikkei_change_pct, interval)
+        market_change_pct = _safe_call(
+            fetch_nikkei_change_pct, interval, warnings=warnings, label="market_change_pct"
+        )
 
     requested_watchlist_symbols = parse_watchlist_symbols(
         watchlist_symbols, watchlist_symbol
     )
-    watchlist_status = _safe_call(fetch_watchlist_status, requested_watchlist_symbols, interval)
-    news_item = _safe_call(fetch_latest_market_news)
+    watchlist_status = _safe_call(
+        fetch_watchlist_status,
+        requested_watchlist_symbols,
+        interval,
+        warnings=warnings,
+        label="watchlist_status",
+    )
+    news_item = _safe_call(fetch_latest_market_news, warnings=warnings, label="news_item")
 
     if usd_jpy is not None:
         source["usd_jpy"] = usd_jpy
@@ -56,13 +65,25 @@ def collect_briefing_source(
     if news_item is not None:
         source["news_item"] = news_item
 
+    available_inputs = sum(
+        1 for item in (usd_jpy, market_change_pct, watchlist_status, news_item) if item is not None
+    )
+    source["data_health"] = {
+        "status": "degraded" if warnings else ("ok" if available_inputs > 0 else "empty"),
+        "available_inputs": available_inputs,
+        "requested_watchlist_symbols": requested_watchlist_symbols,
+        "interval": interval,
+    }
+    if warnings:
+        source["data_warnings"] = warnings
+
     if source and interval != "1d":
         source["data_interval"] = interval
 
     return source or None
 
 
-def _safe_call(function, *args, **kwargs):
+def _safe_call(function, *args, warnings: list[str] | None = None, label: str | None = None, **kwargs):
     attempts: list[tuple[tuple[object, ...], dict[str, object]]] = [(args, kwargs)]
     if args:
         for end in range(len(args) - 1, -1, -1):
@@ -75,7 +96,9 @@ def _safe_call(function, *args, **kwargs):
             return function(*attempt_args, **attempt_kwargs)
         except TypeError:
             continue
-        except Exception:
+        except Exception as exc:
+            if warnings is not None and label:
+                warnings.append(f"{label} unavailable: {exc}")
             return None
     return None
 
