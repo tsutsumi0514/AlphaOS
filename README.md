@@ -41,6 +41,8 @@
   - `http://127.0.0.1:8000/`
 - Open the candidate UI:
   - `http://127.0.0.1:8000/candidates/view`
+- Open the daytrade candidate UI:
+  - `http://127.0.0.1:8000/daytrade-candidates/view`
 - Use the JSON API:
   - `http://127.0.0.1:8000/briefing`
 - Use minute-granularity inputs when needed:
@@ -57,6 +59,7 @@
 - `src/app.py`: replay and validation simulation API endpoint
 - `src/app.py`: opportunity validation API endpoint
 - `src/app.py`: candidate proposal API endpoint
+- `src/app.py`: daytrade candidate proposal API endpoint
 - `src/app.py`: market memory and similar-case search endpoints
 - `src/app.py`: what-if, knowledge graph, and replay comparison endpoints
 - `src/app.py`: interval-aware input collection for `1d` and `1m` views
@@ -87,6 +90,7 @@
 - `src/presenters/v6.py`: candidate UI with top candidate, similar cases, outcome summary, why-now summary, personal context, entry detail, entry reason, counter evidence, and exclusion tags
 - `src/app.py`: candidate outputs are advisory-only and do not trigger auto trading
 - `src/app.py`: candidate outputs expose `strategy_mode` for daytrade and swing separation
+- `src/app.py`: `daytrade-candidates` offers a dedicated daytrade-oriented candidate view
 - `src/storage/market_memory.py`: Market memory persistence and similar-case retrieval
 - `src/knowledge_graph.py`: Lightweight causal graph builder
 - `src/personal.py`: Personal profile filters for candidate ranking

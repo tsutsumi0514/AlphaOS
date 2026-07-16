@@ -277,27 +277,21 @@ def get_memory_search(
     }
 
 
-@app.get("/candidates")
-def get_candidates(
-    horizon: str = Query(default="swing", description="Candidate horizon"),
-    limit: int = Query(default=5, ge=1, le=20),
-    holdings: str | None = Query(default=None, description="Comma-separated current holdings"),
-    investment_period: str | None = Query(default=None, description="Investment period"),
-    risk_tolerance: str | None = Query(default=None, description="Risk tolerance"),
-    style: str | None = Query(default=None, description="Investment style"),
-    interested_markets: str | None = Query(default=None, description="Comma-separated interested markets"),
-    usd_jpy: float | None = Query(default=None, description="USD/JPY rate"),
-    market_change_pct: float | None = Query(
-        default=None, description="Nikkei 225 day-over-day percent change"
-    ),
-    watchlist_symbols: str | None = Query(
-        default=None, description="Comma-separated watchlist symbols"
-    ),
-    watchlist_symbol: str | None = Query(
-        default=None, description="Single watchlist symbol override"
-    ),
-    interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
-):
+def _build_candidate_report(
+    *,
+    horizon: str,
+    limit: int,
+    holdings: str | None,
+    investment_period: str | None,
+    risk_tolerance: str | None,
+    style: str | None,
+    interested_markets: str | None,
+    usd_jpy: float | None,
+    market_change_pct: float | None,
+    watchlist_symbols: str | None,
+    watchlist_symbol: str | None,
+    interval: str,
+) -> dict[str, object]:
     source = collect_briefing_source(
         usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval=interval
     )
@@ -339,6 +333,43 @@ def get_candidates(
     }
 
 
+@app.get("/candidates")
+def get_candidates(
+    horizon: str = Query(default="swing", description="Candidate horizon"),
+    limit: int = Query(default=5, ge=1, le=20),
+    holdings: str | None = Query(default=None, description="Comma-separated current holdings"),
+    investment_period: str | None = Query(default=None, description="Investment period"),
+    risk_tolerance: str | None = Query(default=None, description="Risk tolerance"),
+    style: str | None = Query(default=None, description="Investment style"),
+    interested_markets: str | None = Query(default=None, description="Comma-separated interested markets"),
+    usd_jpy: float | None = Query(default=None, description="USD/JPY rate"),
+    market_change_pct: float | None = Query(
+        default=None, description="Nikkei 225 day-over-day percent change"
+    ),
+    watchlist_symbols: str | None = Query(
+        default=None, description="Comma-separated watchlist symbols"
+    ),
+    watchlist_symbol: str | None = Query(
+        default=None, description="Single watchlist symbol override"
+    ),
+    interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
+):
+    return _build_candidate_report(
+        horizon=horizon,
+        limit=limit,
+        holdings=holdings,
+        investment_period=investment_period,
+        risk_tolerance=risk_tolerance,
+        style=style,
+        interested_markets=interested_markets,
+        usd_jpy=usd_jpy,
+        market_change_pct=market_change_pct,
+        watchlist_symbols=watchlist_symbols,
+        watchlist_symbol=watchlist_symbol,
+        interval=interval,
+    )
+
+
 @app.get("/candidates/view", response_class=HTMLResponse)
 def get_candidates_view(
     horizon: str = Query(default="swing", description="Candidate horizon"),
@@ -360,45 +391,93 @@ def get_candidates_view(
     ),
     interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
 ):
-    source = collect_briefing_source(
-        usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval=interval
+    report = _build_candidate_report(
+        horizon=horizon,
+        limit=limit,
+        holdings=holdings,
+        investment_period=investment_period,
+        risk_tolerance=risk_tolerance,
+        style=style,
+        interested_markets=interested_markets,
+        usd_jpy=usd_jpy,
+        market_change_pct=market_change_pct,
+        watchlist_symbols=watchlist_symbols,
+        watchlist_symbol=watchlist_symbol,
+        interval=interval,
     )
-    briefing = compose_briefing(source)
-    candidate_pool = evaluate_candidate_pool(briefing, horizon=horizon, limit=limit)
-    candidates = candidate_pool["candidates"]
-    similar_cases = find_similar_market_memory(briefing, limit=limit)
-    profile = normalize_personal_profile(
-        {
-            "holdings": [item.strip() for item in holdings.split(",") if item.strip()]
-            if isinstance(holdings, str) and holdings.strip()
-            else [],
-            "investment_period": investment_period,
-            "risk_tolerance": risk_tolerance,
-            "style": style,
-            "interested_markets": [
-                item.strip() for item in interested_markets.split(",") if item.strip()
-            ]
-            if isinstance(interested_markets, str) and interested_markets.strip()
-            else [],
-        }
+    return render_candidates_page(report)
+
+
+@app.get("/daytrade-candidates")
+def get_daytrade_candidates(
+    limit: int = Query(default=5, ge=1, le=20),
+    holdings: str | None = Query(default=None, description="Comma-separated current holdings"),
+    investment_period: str | None = Query(default=None, description="Investment period"),
+    risk_tolerance: str | None = Query(default=None, description="Risk tolerance"),
+    style: str | None = Query(default=None, description="Investment style"),
+    interested_markets: str | None = Query(default=None, description="Comma-separated interested markets"),
+    usd_jpy: float | None = Query(default=None, description="USD/JPY rate"),
+    market_change_pct: float | None = Query(
+        default=None, description="Nikkei 225 day-over-day percent change"
+    ),
+    watchlist_symbols: str | None = Query(
+        default=None, description="Comma-separated watchlist symbols"
+    ),
+    watchlist_symbol: str | None = Query(
+        default=None, description="Single watchlist symbol override"
+    ),
+    interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
+):
+    return _build_candidate_report(
+        horizon="daytrade",
+        limit=limit,
+        holdings=holdings,
+        investment_period=investment_period,
+        risk_tolerance=risk_tolerance,
+        style=style,
+        interested_markets=interested_markets,
+        usd_jpy=usd_jpy,
+        market_change_pct=market_change_pct,
+        watchlist_symbols=watchlist_symbols,
+        watchlist_symbol=watchlist_symbol,
+        interval=interval,
     )
-    personalized = personalize_candidates(candidates, profile)
-    strategy_mode = "daytrade" if horizon.strip().lower() == "daytrade" else "swing"
-    report = {
-        "automation_mode": "advisory_only",
-        "strategy_mode": strategy_mode,
-        "count": len(personalized["candidates"]),
-        "rejected_count": len(candidate_pool["excluded"]),
-        "opportunity_summary": candidate_pool["summary"],
-        "horizon": strategy_mode,
-        "personal_profile": personalized["profile"],
-        "personal_notes": personalized["notes"],
-        "candidates": personalized["candidates"],
-        "excluded_candidates": candidate_pool["excluded"],
-        "similar_cases": similar_cases,
-        "top_candidate": personalized["candidates"][0] if personalized["candidates"] else None,
-        "briefing_id": briefing.get("briefing_id"),
-    }
+
+
+@app.get("/daytrade-candidates/view", response_class=HTMLResponse)
+def get_daytrade_candidates_view(
+    limit: int = Query(default=5, ge=1, le=20),
+    holdings: str | None = Query(default=None, description="Comma-separated current holdings"),
+    investment_period: str | None = Query(default=None, description="Investment period"),
+    risk_tolerance: str | None = Query(default=None, description="Risk tolerance"),
+    style: str | None = Query(default=None, description="Investment style"),
+    interested_markets: str | None = Query(default=None, description="Comma-separated interested markets"),
+    usd_jpy: float | None = Query(default=None, description="USD/JPY rate"),
+    market_change_pct: float | None = Query(
+        default=None, description="Nikkei 225 day-over-day percent change"
+    ),
+    watchlist_symbols: str | None = Query(
+        default=None, description="Comma-separated watchlist symbols"
+    ),
+    watchlist_symbol: str | None = Query(
+        default=None, description="Single watchlist symbol override"
+    ),
+    interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
+):
+    report = _build_candidate_report(
+        horizon="daytrade",
+        limit=limit,
+        holdings=holdings,
+        investment_period=investment_period,
+        risk_tolerance=risk_tolerance,
+        style=style,
+        interested_markets=interested_markets,
+        usd_jpy=usd_jpy,
+        market_change_pct=market_change_pct,
+        watchlist_symbols=watchlist_symbols,
+        watchlist_symbol=watchlist_symbol,
+        interval=interval,
+    )
     return render_candidates_page(report)
 
 

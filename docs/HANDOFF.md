@@ -82,7 +82,7 @@ Current collectors fetch external inputs:
 - `src/app.py` also exposes `/memory` and `/memory/search` for market memory review and similar-case retrieval.
 - `src/app.py` also exposes `/what-if`, `/knowledge-graph`, and `/replay/compare` for V6 exploration.
 - `src/app.py` also exposes `/candidates` for ranked buy-candidate proposals.
-- Planned API surfaces should include candidate-oriented views such as `/daytrade-candidates`.
+- `src/app.py` also exposes `/daytrade-candidates` for dedicated daytrade-oriented candidate proposals.
 - The endpoint can accept manual overrides such as `usd_jpy`, `market_change_pct`, and watchlist symbols.
 - If values are omitted, the app auto-fetches them.
 

@@ -14,6 +14,7 @@ The current API layer also exposes `/history`, `/history/view`, `/backtest`, `/o
 The live briefing and candidate routes can also accept an `interval` such as `1d` or `1m` so day-trade views can use minute-granularity inputs when available.
 The current v4 step adds a multi-agent decision view and a historical replay simulation endpoint with in-window calibration, baseline comparison, and 500-sample walk-forward validation.
 The next major layer is `Opportunity Engine`, which should translate decision output into ranked buy candidates, filter out weak or illiquid items, and provide entry timing hints.
+The current candidate layer exposes both `/candidates` and `/daytrade-candidates` so the shared core can branch by horizon without duplicating collection logic.
 
 ## Target Layering
 

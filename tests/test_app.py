@@ -443,6 +443,19 @@ def test_candidates_endpoint_includes_opportunity_summary():
     assert "avoid_count" in summary
 
 
+def test_daytrade_candidates_endpoint_uses_daytrade_mode():
+    response = client.get("/daytrade-candidates?limit=2&holdings=7203.T")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["automation_mode"] == "advisory_only"
+    assert data["strategy_mode"] == "daytrade"
+    assert data["horizon"] == "daytrade"
+    assert data["personal_profile"] == {"holdings": ["7203.T"]}
+    assert all(candidate["horizon"] == "daytrade" for candidate in data["candidates"])
+    assert data["top_candidate"]["horizon"] == "daytrade"
+
+
 def test_candidates_view_returns_html_with_entry_details():
     import src.app as app_module
 
@@ -475,6 +488,16 @@ def test_candidates_view_returns_html_with_entry_details():
     assert "Counter evidence" in response.text
     assert "Excluded Candidates" in response.text
     assert "holdings" in response.text
+
+
+def test_daytrade_candidates_view_returns_html():
+    response = client.get("/daytrade-candidates/view?limit=3")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AlphaOS Candidates" in response.text
+    assert "Strategy" in response.text
+    assert "daytrade" in response.text
 
 
 def test_what_if_endpoint_returns_scenarios():

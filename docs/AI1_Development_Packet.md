@@ -15,6 +15,7 @@ AlphaOSは、個人投資家向けのAI投資支援OSです。
 - `Opportunity Engine` を銘柄提案の中心に置く
 - 候補除外・流動性フィルタ・反証表示を候補レイヤーで扱う
 - デイトレと中長期は共通コアの後で分岐する
+- 候補提案の入口は `/candidates` と `/daytrade-candidates` に分ける
 
 ## 現在の骨格
 - `collectors/` : USD/JPY、日経、ニュース、watchlist の取得
