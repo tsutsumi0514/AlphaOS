@@ -36,6 +36,7 @@ class OpportunityExclusion(TypedDict):
     confidence: str
     liquidity: str
     reason: str
+    tags: list[str]
 
 
 class OpportunityPool(TypedDict):
@@ -90,6 +91,7 @@ def evaluate_candidate_pool(
                     "confidence": candidate["confidence"],
                     "liquidity": candidate["liquidity"],
                     "reason": _exclude_reason(candidate),
+                    "tags": _exclusion_tags(candidate),
                 }
             )
             continue
@@ -106,6 +108,7 @@ def evaluate_candidate_pool(
         "buy_now_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "buy_now"),
         "wait_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "wait"),
         "avoid_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "avoid"),
+        "exclusion_breakdown": _exclusion_breakdown(excluded),
     }
     return {
         "candidates": ranked_candidates,
@@ -195,6 +198,32 @@ def _exclude_reason(candidate: OpportunityCandidate) -> str:
     if not candidate["evidence"]:
         return "No structured evidence is available."
     return "Candidate does not pass the exclusion filter."
+
+
+def _exclusion_tags(candidate: OpportunityCandidate) -> list[str]:
+    tags: list[str] = []
+    evidence_count = len(candidate["evidence"])
+    if evidence_count == 0:
+        tags.append("no_evidence")
+    if candidate["score"] < 0.42:
+        tags.append("low_score")
+    if candidate["confidence"] == "low":
+        tags.append("low_confidence")
+    if candidate["status"] == "avoid":
+        tags.append("risk_off")
+    if candidate["horizon"] == "daytrade" and candidate["liquidity"] in {"thin", "unknown"}:
+        tags.append("thin_liquidity")
+    if candidate["liquidity"] == "thin" and candidate["confidence"] == "low":
+        tags.append("thin_and_uncertain")
+    return _unique_short_list(tags) or ["filtered"]
+
+
+def _exclusion_breakdown(excluded: list[OpportunityExclusion]) -> dict[str, int]:
+    breakdown: dict[str, int] = {}
+    for item in excluded:
+        for tag in item.get("tags", []):
+            breakdown[tag] = breakdown.get(tag, 0) + 1
+    return breakdown
 
 
 def _candidate_score(

@@ -84,6 +84,7 @@
 - `src/simulation/validation.py`: Virtual-trading validation for candidates
 - `src/simulation/what_if.py`: Simple scenario simulator
 - `src/opportunity.py`: Ranked buy-candidate proposal helpers with exclusion and summary counts
+- `src/presenters/v6.py`: candidate UI with entry reason, counter evidence, and exclusion tags
 - `src/storage/market_memory.py`: Market memory persistence and similar-case retrieval
 - `src/knowledge_graph.py`: Lightweight causal graph builder
 - `src/personal.py`: Personal profile filters for candidate ranking

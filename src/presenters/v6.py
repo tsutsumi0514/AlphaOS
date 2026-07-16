@@ -216,10 +216,15 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
         for item in excluded[:8]:
             if not isinstance(item, Mapping):
                 continue
+            tags = ", ".join(_list_items(item.get("tags")))
+            tag_markup = ""
+            if tags:
+                tag_markup = f" <span class='empty'>[{escape(tags)}]</span>"
             excluded_lines.append(
                 "<li>"
                 f"<strong>{escape(_text(item.get('symbol'), 'unknown'))}</strong> "
                 f"{escape(_text(item.get('reason'), ''))}"
+                f"{tag_markup}"
                 "</li>"
             )
     if not excluded_lines:
@@ -227,11 +232,14 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
 
     summary = report.get("opportunity_summary", {})
     summary_line = _render_kv_list(summary)
+    breakdown = summary.get("exclusion_breakdown", {}) if isinstance(summary, Mapping) else {}
+    breakdown_line = _render_kv_list(breakdown)
     body = (
         f"<p class='subhead'>Horizon: {escape(_text(report.get('horizon'), 'swing'))}. "
         f"Count: {escape(str(report.get('count', 0)))}. "
         f"Rejected: {escape(str(report.get('rejected_count', 0)))}.</p>"
         f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
+        f"<section class='panel'><h2>Exclusion Breakdown</h2><ul>{breakdown_line}</ul></section>"
         "<div class='grid'>" + "".join(cards) + "</div>"
         "<section class='panel'><h2>Excluded Candidates</h2><ul>" + "".join(excluded_lines) + "</ul></section>"
     )

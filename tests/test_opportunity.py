@@ -105,6 +105,8 @@ def test_candidate_pool_excludes_weak_thin_candidates():
     assert pool["candidates"][0]["entry_timing"] == "buy_now"
     assert pool["excluded"]
     assert pool["excluded"][0]["symbol"] == "0000.T"
+    assert "tags" in pool["excluded"][0]
+    assert "thin_liquidity" in pool["excluded"][0]["tags"] or "risk_off" in pool["excluded"][0]["tags"]
     assert "Liquidity" in pool["excluded"][0]["reason"] or "Confidence" in pool["excluded"][0]["reason"]
 
 
@@ -121,3 +123,5 @@ def test_candidates_endpoint_returns_ranked_list():
     assert "entry_timing" in data["candidates"][0]
     assert "excluded_candidates" in data
     assert "rejected_count" in data
+    assert "opportunity_summary" in data
+    assert "exclusion_breakdown" in data["opportunity_summary"]

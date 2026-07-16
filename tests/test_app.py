@@ -445,6 +445,7 @@ def test_candidates_view_returns_html_with_entry_details():
     assert "text/html" in response.headers["content-type"]
     assert "AlphaOS Candidates" in response.text
     assert "Opportunity Summary" in response.text
+    assert "Exclusion Breakdown" in response.text
     assert "Entry reason" in response.text
     assert "Counter evidence" in response.text
     assert "Excluded Candidates" in response.text
