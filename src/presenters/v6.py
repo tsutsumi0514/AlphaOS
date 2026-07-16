@@ -175,6 +175,8 @@ def _render_validation_page(report: Mapping[str, Any]) -> str:
 def _render_candidates_page(report: Mapping[str, Any]) -> str:
     candidates = report.get("candidates", [])
     excluded = report.get("excluded_candidates", [])
+    personal_profile = report.get("personal_profile", {})
+    personal_notes = report.get("personal_notes", [])
     cards = []
     if isinstance(candidates, list):
         for candidate in candidates:
@@ -235,10 +237,15 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     summary_line = _render_kv_list(summary)
     breakdown = summary.get("exclusion_breakdown", {}) if isinstance(summary, Mapping) else {}
     breakdown_line = _render_kv_list(breakdown)
+    profile_line = _render_personal_profile_list(personal_profile)
+    notes_line = "".join(f"<li>{escape(item)}</li>" for item in _list_items(personal_notes))
+    if not notes_line:
+        notes_line = "<li class='empty'>No personal notes yet.</li>"
     body = (
         f"<p class='subhead'>Horizon: {escape(_text(report.get('horizon'), 'swing'))}. "
         f"Count: {escape(str(report.get('count', 0)))}. "
         f"Rejected: {escape(str(report.get('rejected_count', 0)))}.</p>"
+        f"<section class='panel'><h2>Personal Context</h2><ul>{profile_line}</ul><ul>{notes_line}</ul></section>"
         f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
         f"<section class='panel'><h2>Exclusion Breakdown</h2><ul>{breakdown_line}</ul></section>"
         "<div class='grid'>" + "".join(cards) + "</div>"
@@ -291,6 +298,22 @@ def _render_kv_list(value: Mapping[str, Any] | Any) -> str:
         if isinstance(detail_breakdown, Mapping):
             for key, item in detail_breakdown.items():
                 items.append(f"<li><strong>{escape(str(key))}</strong>: {escape(str(item))}</li>")
+    if not items:
+        items.append("<li class='empty'>None</li>")
+    return "".join(items)
+
+
+def _render_personal_profile_list(value: Mapping[str, Any] | Any) -> str:
+    if not isinstance(value, Mapping):
+        return "<li class='empty'>None</li>"
+    items: list[str] = []
+    for key in ("holdings", "investment_period", "risk_tolerance", "style", "interested_markets"):
+        item = value.get(key)
+        if item is None:
+            continue
+        if isinstance(item, list):
+            item = ", ".join(str(entry) for entry in item)
+        items.append(f"<li><strong>{escape(key)}</strong>: {escape(str(item))}</li>")
     if not items:
         items.append("<li class='empty'>None</li>")
     return "".join(items)

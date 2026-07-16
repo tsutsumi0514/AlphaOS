@@ -439,17 +439,19 @@ def test_candidates_endpoint_includes_opportunity_summary():
 
 
 def test_candidates_view_returns_html_with_entry_details():
-    response = client.get("/candidates/view?limit=3")
+    response = client.get("/candidates/view?limit=3&holdings=7203.T")
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "AlphaOS Candidates" in response.text
+    assert "Personal Context" in response.text
     assert "Opportunity Summary" in response.text
     assert "Exclusion Breakdown" in response.text
     assert "Entry reason" in response.text
     assert "Entry detail" in response.text
     assert "Counter evidence" in response.text
     assert "Excluded Candidates" in response.text
+    assert "holdings" in response.text
 
 
 def test_what_if_endpoint_returns_scenarios():
