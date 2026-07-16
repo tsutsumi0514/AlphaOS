@@ -92,6 +92,11 @@ def _render_replay_compare_page(compare: Mapping[str, Any]) -> str:
     matches = compare.get("similar_cases", [])
     current_line = _render_kv_list(current)
     replay_line = _render_kv_list(replay)
+    replay_summary_block = ""
+    if isinstance(replay, Mapping):
+        replay_summary = replay.get("replay_summary")
+        if isinstance(replay_summary, Mapping):
+            replay_summary_block = _render_replay_summary_list(replay_summary)
     match_lines = []
     if isinstance(matches, list):
         for match in matches[:5]:
@@ -109,7 +114,7 @@ def _render_replay_compare_page(compare: Mapping[str, Any]) -> str:
     body = (
         "<div class='grid'>"
         f"<section class='panel'><h2>Current</h2><ul>{current_line}</ul></section>"
-        f"<section class='panel'><h2>Latest Replay</h2><ul>{replay_line}</ul></section>"
+        f"<section class='panel'><h2>Latest Replay</h2><ul>{replay_line}</ul>{replay_summary_block}</section>"
         "</div>"
         "<section class='panel'><h2>Similar Cases</h2><ul>"
         + "".join(match_lines)
@@ -201,15 +206,18 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
                 f"<p><strong>Name</strong> {escape(_text(candidate.get('name'), ''))}</p>"
                 f"<p><strong>Horizon</strong> {escape(_text(candidate.get('horizon'), ''))}</p>"
                 f"<p><strong>Score</strong> {escape(_number(candidate.get('score')))}</p>"
+                f"<p><strong>Personalized score</strong> {escape(_number(candidate.get('personalized_score')))}</p>"
                 f"<p><strong>Confidence</strong> {escape(_text(candidate.get('confidence'), ''))}</p>"
                 f"<p><strong>Entry timing</strong> {escape(_text(candidate.get('entry_timing'), ''))}</p>"
                 f"<p><strong>Entry detail</strong> {escape(_text(candidate.get('entry_detail'), ''))}</p>"
+                f"<p><strong>Candidate reason</strong> {escape(_text(candidate.get('candidate_reason'), ''))}</p>"
                 f"<p><strong>Entry reason</strong> {escape(_text(candidate.get('entry_reason'), ''))}</p>"
                 f"<p><strong>Status</strong> {escape(_text(candidate.get('status'), ''))}</p>"
                 f"<p><strong>Liquidity</strong> {escape(_text(candidate.get('liquidity'), ''))}</p>"
                 f"<p><strong>Note</strong> {escape(_text(candidate.get('note'), ''))}</p>"
                 f"<p><strong>Sector</strong> {escape(_text(candidate.get('sector'), ''))}</p>"
                 f"<p><strong>Sector strength</strong> {escape(_text(candidate.get('sector_strength'), ''))}</p>"
+                f"<div><strong>Personalization notes</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('personalization_notes'))[:4])}</ul></div>"
                 f"<div><strong>Reasons</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('reasons'))[:4])}</ul></div>"
                 f"<div><strong>Risk alerts</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('risk_alerts'))[:4])}</ul></div>"
                 f"<div><strong>Counter evidence</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('counter_evidence'))[:4])}</ul></div>"
@@ -303,7 +311,7 @@ def _render_kv_list(value: Mapping[str, Any] | Any) -> str:
     if not isinstance(value, Mapping):
         return "<li class='empty'>None</li>"
     items: list[str] = []
-    for key in ("market_state", "fx_state", "confidence", "horizon", "win_rate", "profit_factor", "sharpe"):
+    for key in ("market_state", "fx_state", "confidence", "horizon", "win_rate", "profit_factor", "sharpe", "sample_size", "accuracy", "weighted_accuracy"):
         item = value.get(key)
         if item is None:
             continue
@@ -316,6 +324,33 @@ def _render_kv_list(value: Mapping[str, Any] | Any) -> str:
     if not items:
         items.append("<li class='empty'>None</li>")
     return "".join(items)
+
+
+def _render_replay_summary_list(value: Mapping[str, Any] | Any) -> str:
+    if not isinstance(value, Mapping):
+        return ""
+
+    items: list[str] = []
+    for key in ("sample_size", "accuracy", "weighted_accuracy", "baseline", "validation"):
+        item = value.get(key)
+        if item is None:
+            continue
+        if isinstance(item, Mapping):
+            summary = item.get("summary", item)
+            if isinstance(summary, Mapping):
+                nested = ", ".join(
+                    f"{sub_key}={summary[sub_key]}"
+                    for sub_key in ("total", "accuracy", "weighted_accuracy", "coverage")
+                    if summary.get(sub_key) is not None
+                )
+                if nested:
+                    items.append(f"<li><strong>{escape(key)}</strong>: {escape(nested)}</li>")
+                continue
+        items.append(f"<li><strong>{escape(key)}</strong>: {escape(str(item))}</li>")
+
+    if not items:
+        return ""
+    return "<div><strong>Replay summary</strong><ul>" + "".join(items) + "</ul></div>"
 
 
 def _render_personal_profile_list(value: Mapping[str, Any] | Any) -> str:
@@ -492,9 +527,10 @@ def _render_outcome_summary(value: Any) -> str:
 
 
 def _build_why_now_line(value: Mapping[str, Any]) -> str:
+    candidate_reason = _text(value.get("candidate_reason"), "")
     detail = _text(value.get("entry_detail"), "")
     reason = _text(value.get("entry_reason"), "")
-    parts = [part for part in (detail, reason) if part]
+    parts = [part for part in (candidate_reason, detail, reason) if part]
     if parts:
         return " / ".join(parts)
     return "No short summary yet."

@@ -21,12 +21,15 @@ class OpportunityCandidate(TypedDict):
     entry_timing: str
     entry_detail: str
     entry_reason: str
+    candidate_reason: str
     status: str
     counter_evidence: list[str]
     liquidity: str
     note: NotRequired[str]
     sector: NotRequired[str]
     sector_strength: NotRequired[str]
+    personalized_score: NotRequired[float]
+    personalization_notes: NotRequired[list[str]]
 
 
 class OpportunityExclusion(TypedDict):
@@ -170,6 +173,7 @@ def _build_candidate(
     note = _candidate_note(candidate)
     if note is not None:
         candidate["note"] = note
+    candidate["candidate_reason"] = candidate["entry_reason"]
     return candidate
 
 
@@ -189,15 +193,15 @@ def _should_exclude(candidate: OpportunityCandidate) -> bool:
         return True
     if status == "avoid" and score < 0.58:
         return True
-    if horizon == "daytrade" and liquidity in {"thin", "unknown"} and score < 0.72:
+    if horizon == "daytrade" and liquidity in {"thin", "unavailable"} and score < 0.72:
         return True
-    if liquidity == "thin" and confidence == "low":
+    if liquidity in {"thin", "unavailable"} and confidence == "low":
         return True
     return False
 
 
 def _exclude_reason(candidate: OpportunityCandidate) -> str:
-    if candidate["horizon"] == "daytrade" and candidate["liquidity"] in {"thin", "unknown"}:
+    if candidate["horizon"] == "daytrade" and candidate["liquidity"] in {"thin", "unavailable"}:
         return "Liquidity is too weak for day-trade use."
     if candidate["confidence"] == "low":
         return "Confidence is too low for a ranked candidate."
@@ -221,8 +225,10 @@ def _exclusion_tags(candidate: OpportunityCandidate) -> list[str]:
         tags.append("low_confidence")
     if candidate["status"] == "avoid":
         tags.append("risk_off")
-    if candidate["horizon"] == "daytrade" and candidate["liquidity"] in {"thin", "unknown"}:
+    if candidate["horizon"] == "daytrade" and candidate["liquidity"] in {"thin", "unavailable"}:
         tags.append("thin_liquidity")
+    if candidate["liquidity"] == "unavailable":
+        tags.append("liquidity_unavailable")
     if candidate["liquidity"] == "thin" and candidate["confidence"] == "low":
         tags.append("thin_and_uncertain")
     return _unique_short_list(tags) or ["filtered"]
@@ -722,7 +728,7 @@ def _liquidity_state(item: Mapping[str, Any]) -> str:
     if volume is None:
         volume = _numeric(item.get("average_volume"))
     if volume is None:
-        return "unknown"
+        return "unavailable"
     if volume >= 1_000_000:
         return "high"
     if volume >= 200_000:

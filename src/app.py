@@ -557,7 +557,7 @@ def get_replay_compare(
             "confidence": briefing.get("confidence"),
             "risk_alerts": briefing.get("risk_alerts", []),
         },
-        "latest_replay": latest_replay.get("replay_summary") if isinstance(latest_replay, dict) else {},
+        "latest_replay": latest_replay if isinstance(latest_replay, dict) else {},
         "similar_cases": similar_cases,
     }
     return render_replay_compare_page(compare)

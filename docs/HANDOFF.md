@@ -46,6 +46,7 @@ Current collectors fetch external inputs:
 - `src/agents/contracts.py` defines the shared AgentDecision contract for agent outputs.
 - The next layer after `decision_ai` is the `Opportunity Engine`, which should turn evidence-backed decisions into ranked buy candidates and entry timing hints.
 - The Opportunity Engine should also filter out weak or illiquid candidates before ranking and keep counter-evidence short.
+- Candidate cards should expose a one-line `candidate_reason`, `counter_evidence`, and a simple liquidity state.
 
 ### Storage and Learning Layer
 - `src/storage/briefing_history.py` stores briefing snapshots in JSONL under the user's home directory by default.
