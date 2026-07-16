@@ -179,6 +179,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     personal_notes = report.get("personal_notes", [])
     top_candidate = report.get("top_candidate", {})
     similar_cases = report.get("similar_cases", [])
+    learning_summary = report.get("learning_summary", {})
     cards = []
     if isinstance(candidates, list):
         for candidate in candidates:
@@ -241,6 +242,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     breakdown_line = _render_kv_list(breakdown)
     top_candidate_block = _render_top_candidate_block(top_candidate)
     similar_cases_block = _render_similar_cases_block(similar_cases)
+    learning_block = _render_learning_block(learning_summary)
     profile_line = _render_personal_profile_list(personal_profile)
     notes_line = "".join(f"<li>{escape(item)}</li>" for item in _list_items(personal_notes))
     if not notes_line:
@@ -252,6 +254,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
         f"Strategy: {escape(_text(report.get('strategy_mode'), _text(report.get('horizon'), 'swing')))}. "
         f"Mode: {escape(_text(report.get('automation_mode'), 'advisory_only'))}.</p>"
         f"{top_candidate_block}"
+        f"{learning_block}"
         f"{similar_cases_block}"
         f"<section class='panel'><h2>Personal Context</h2><ul>{profile_line}</ul><ul>{notes_line}</ul></section>"
         f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
@@ -364,6 +367,36 @@ def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
         f"<div><strong>Evidence</strong><ul>{''.join(evidence_lines)}</ul></div>"
         "</section>"
     )
+
+
+def _render_learning_block(value: Mapping[str, Any] | Any) -> str:
+    if not isinstance(value, Mapping):
+        return "<section class='panel'><h2>Learning</h2><p class='empty'>None</p></section>"
+
+    items = []
+    for key in ("status", "sample_size", "accuracy", "weighted_accuracy"):
+        item = value.get(key)
+        if item is None:
+            continue
+        items.append(f"<li><strong>{escape(key)}</strong>: {escape(str(item))}</li>")
+
+    periods = value.get("periods")
+    if isinstance(periods, Mapping):
+        recent = periods.get("recent_5")
+        if isinstance(recent, Mapping):
+            items.append(
+                f"<li><strong>recent_5 accuracy</strong>: {escape(_number(recent.get('accuracy')))}</li>"
+            )
+            items.append(
+                f"<li><strong>recent_5 weighted_accuracy</strong>: {escape(_number(recent.get('weighted_accuracy')))}</li>"
+            )
+
+    notes = _list_items(value.get("notes"))
+    if notes:
+        items.extend(f"<li>{escape(note)}</li>" for note in notes[:3])
+    if not items:
+        items.append("<li class='empty'>No learning data yet.</li>")
+    return "<section class='panel'><h2>Learning</h2><ul>" + "".join(items) + "</ul></section>"
 
 
 def _render_similar_cases_block(value: Any) -> str:

@@ -128,3 +128,30 @@ def test_candidates_endpoint_returns_ranked_list():
     assert "opportunity_summary" in data
     assert "exclusion_breakdown" in data["opportunity_summary"]
     assert "entry_detail_breakdown" in data["opportunity_summary"]
+
+
+def test_learning_summary_adjusts_candidate_score():
+    base_briefing = {
+        "market_state": "bullish",
+        "fx_state": "weak yen",
+        "confidence": "high",
+        "risk_alerts": ["Market tone is calm."],
+        "watchlist_status": [
+            {"symbol": "7203.T", "name": "Toyota", "status": "strong", "change_pct": 2.4},
+        ],
+        "decision_ai": {"stance": "supportive", "reason": "Decision support leans constructive."},
+        "evidence": [
+            {"source": "market", "label": "Nikkei day-over-day change", "value": 1.2},
+            {"source": "fx", "label": "USD/JPY", "value": 156.2},
+        ],
+    }
+
+    weak_briefing = dict(base_briefing)
+    weak_briefing["learning_summary"] = {"status": "weak"}
+    strong_briefing = dict(base_briefing)
+    strong_briefing["learning_summary"] = {"status": "strong"}
+
+    weak_score = evaluate_candidate_pool(weak_briefing)["candidates"][0]["score"]
+    strong_score = evaluate_candidate_pool(strong_briefing)["candidates"][0]["score"]
+
+    assert strong_score > weak_score

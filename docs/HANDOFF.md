@@ -205,6 +205,7 @@ These base assets must remain intact while the opportunity layer is added above 
 
 ### v7
 - Add Learning AI and backtest-driven refinement.
+- Feed learning summaries back into candidate ranking and candidate presentation.
 
 ### v8
 - Add simple Knowledge Graph and personalization only if they improve candidate proposals.

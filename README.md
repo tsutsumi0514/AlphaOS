@@ -91,6 +91,7 @@
 - `src/app.py`: candidate outputs are advisory-only and do not trigger auto trading
 - `src/app.py`: candidate outputs expose `strategy_mode` for daytrade and swing separation
 - `src/app.py`: `daytrade-candidates` offers a dedicated daytrade-oriented candidate view
+- `src/app.py`: candidate outputs include learning summary context for ranking transparency
 - `src/storage/market_memory.py`: Market memory persistence and similar-case retrieval
 - `src/knowledge_graph.py`: Lightweight causal graph builder
 - `src/personal.py`: Personal profile filters for candidate ranking

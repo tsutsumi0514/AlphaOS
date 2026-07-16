@@ -443,6 +443,15 @@ def test_candidates_endpoint_includes_opportunity_summary():
     assert "avoid_count" in summary
 
 
+def test_candidates_endpoint_includes_learning_summary():
+    response = client.get("/candidates?limit=3")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "learning_summary" in data
+    assert data["learning_summary"]["status"] in {"insufficient", "weak", "moderate", "strong"}
+
+
 def test_daytrade_candidates_endpoint_uses_daytrade_mode():
     response = client.get("/daytrade-candidates?limit=2&holdings=7203.T")
 
@@ -498,6 +507,7 @@ def test_daytrade_candidates_view_returns_html():
     assert "AlphaOS Candidates" in response.text
     assert "Strategy" in response.text
     assert "daytrade" in response.text
+    assert "Learning" in response.text
 
 
 def test_what_if_endpoint_returns_scenarios():

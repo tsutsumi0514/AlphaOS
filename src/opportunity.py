@@ -245,6 +245,7 @@ def _candidate_score(
     horizon: str,
 ) -> float:
     score = _base_score(item.get("status"))
+    score += _learning_score_adjustment(briefing)
 
     market_state = _text(briefing.get("market_state"))
     if market_state == "bullish":
@@ -293,6 +294,21 @@ def _candidate_score(
             score += 0.03
 
     return round(_clamp(score), 3)
+
+
+def _learning_score_adjustment(briefing: Mapping[str, Any]) -> float:
+    learning_summary = briefing.get("learning_summary")
+    if not isinstance(learning_summary, Mapping):
+        return 0.0
+
+    status = _text(learning_summary.get("status"))
+    if status == "strong":
+        return 0.03
+    if status == "moderate":
+        return 0.0
+    if status == "weak":
+        return -0.04
+    return 0.0
 
 
 def _candidate_confidence(score: float, briefing: Mapping[str, Any]) -> str:

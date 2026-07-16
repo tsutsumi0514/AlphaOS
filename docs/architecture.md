@@ -73,7 +73,7 @@ This makes later agent coordination, learning, and backtesting possible.
 - `v4`: Decision AI with replayable historical simulation, calibrated for the replay window, 500-sample validation, and walk-forward validation.
 - `v5`: Opportunity Engine with ranked buy candidates and entry timing.
 - `v6`: Market Memory that helps candidate quality when it proves useful.
-- `v7`: Learning loop that improves candidate ranking with real outcomes.
+- `v7`: Learning loop that improves candidate ranking with real outcomes and feeds learning summaries back into candidate scoring.
 - `v8`: Knowledge Graph and personalization only if they improve candidate proposals.
 ## Interval-Aware Data Flow
 

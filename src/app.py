@@ -323,6 +323,7 @@ def _build_candidate_report(
         "rejected_count": len(candidate_pool["excluded"]),
         "opportunity_summary": candidate_pool["summary"],
         "horizon": strategy_mode,
+        "learning_summary": briefing.get("learning_summary"),
         "personal_profile": personalized["profile"],
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],
