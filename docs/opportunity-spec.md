@@ -12,6 +12,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - `learning_summary`: Recent learning performance and period snapshots.
 - `candidate_learning_profile`: Candidate-specific learning bias derived from the current learning summary.
 - `replay_summary`: Historical replay and validation signals when available.
+- `personal_profile`: User profile used for light ranking adjustments and filtering.
 - `watchlist_status`: Current tracked symbols and their states.
 - `market_state`: Current broad market tone.
 - `fx_state`: Current FX tone.
@@ -45,6 +46,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - Candidate exclusion should remove low-confidence, thin-liquidity, and low-evidence noise.
 - Learning should adjust ranking only through a small, explainable bias derived from past outcomes.
 - Graph context should stay lightweight and explanatory, not become a second ranking engine.
+- Personalization should only nudge ranking and filtering, not override the evidence-first core.
 
 ## Entry Timing
 - `buy_now`: Candidate conditions are favorable now.

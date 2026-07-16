@@ -41,9 +41,9 @@ def test_build_knowledge_graph_links_candidate_and_scenario():
 
 def test_personalize_candidates_filters_holdings_and_style():
     candidates = [
-        {"symbol": "7203.T", "horizon": "swing", "confidence": "high"},
-        {"symbol": "6758.T", "horizon": "daytrade", "confidence": "low"},
-        {"symbol": "9984.T", "horizon": "daytrade", "confidence": "high"},
+        {"symbol": "7203.T", "horizon": "swing", "confidence": "high", "score": 0.6},
+        {"symbol": "6758.T", "horizon": "daytrade", "confidence": "high", "score": 0.6},
+        {"symbol": "9984.T", "horizon": "daytrade", "confidence": "high", "score": 0.6},
     ]
 
     result = personalize_candidates(
@@ -60,3 +60,23 @@ def test_personalize_candidates_filters_holdings_and_style():
     assert result["profile"]["holdings"] == ["7203.T"]
     assert all(candidate["symbol"] != "7203.T" for candidate in result["candidates"])
     assert all(candidate["horizon"] == "daytrade" for candidate in result["candidates"])
+    assert result["candidates"][0]["symbol"] in {"6758.T", "9984.T"}
+    assert result["candidates"][0]["personalized_score"] >= result["candidates"][-1]["personalized_score"]
+
+
+def test_personalize_candidates_promotes_matching_daytrade_style():
+    candidates = [
+        {"symbol": "7203.T", "horizon": "swing", "confidence": "high", "score": 0.62},
+        {"symbol": "9984.T", "horizon": "daytrade", "confidence": "high", "score": 0.62, "sector": "technology"},
+    ]
+
+    result = personalize_candidates(
+        candidates,
+        {
+            "risk_tolerance": "medium",
+            "interested_markets": ["technology"],
+        },
+    )
+
+    assert result["candidates"][0]["symbol"] == "9984.T"
+    assert result["candidates"][0]["personalized_score"] > result["candidates"][1]["personalized_score"]

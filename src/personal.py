@@ -55,6 +55,7 @@ def personalize_candidates(
 
     for candidate in candidates:
         symbol = _text(candidate.get("symbol")).upper()
+        adjusted = dict(candidate)
         if symbol in holdings:
             notes.append(f"{symbol} is already held, so it is de-emphasized.")
             continue
@@ -71,7 +72,9 @@ def personalize_candidates(
             if sector and sector not in markets:
                 notes.append(f"{symbol} is outside the preferred market set.")
                 continue
-        filtered.append(dict(candidate))
+        adjusted["personalized_score"] = _personalized_score(adjusted, normalized)
+        adjusted["personalization_notes"] = _personalization_notes(adjusted, normalized)
+        filtered.append(adjusted)
 
     if not filtered:
         filtered = [dict(candidate) for candidate in candidates[:1]]
@@ -79,8 +82,18 @@ def personalize_candidates(
             notes.append("Profile filters were strict, so the top candidate was kept as a fallback.")
 
     for candidate in filtered:
+        if "personalized_score" not in candidate:
+            candidate["personalized_score"] = _personalized_score(candidate, normalized)
         if holdings and _text(candidate.get("symbol")).upper() in holdings:
             candidate["note"] = "Already held; keep only if portfolio context changes."
+
+    filtered.sort(
+        key=lambda candidate: (
+            float(candidate.get("personalized_score", candidate.get("score", 0.0))),
+            float(candidate.get("score", 0.0)),
+        ),
+        reverse=True,
+    )
 
     return {
         "profile": normalized,
@@ -112,3 +125,71 @@ def _unique_short_list(values: list[str]) -> list[str]:
         if value not in unique:
             unique.append(value)
     return unique[:4]
+
+
+def _numeric(value: Any, default: float = 0.0) -> float:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value.strip())
+        except ValueError:
+            return default
+    return default
+
+
+def _personalized_score(candidate: Mapping[str, Any], profile: Mapping[str, Any]) -> float:
+    score = _numeric(candidate.get("score"), 0.0)
+    horizon = _text(candidate.get("horizon")).lower()
+    style = _text(profile.get("style")).lower()
+    investment_period = _text(profile.get("investment_period")).lower()
+    confidence = _text(candidate.get("confidence")).lower()
+    sector = _text(candidate.get("sector")).lower()
+    markets = {item.lower() for item in _string_list(profile.get("interested_markets"))}
+    holdings = {item.upper() for item in _string_list(profile.get("holdings"))}
+    symbol = _text(candidate.get("symbol")).upper()
+
+    if style == "daytrade":
+        score += 0.04 if horizon == "daytrade" else -0.02
+    elif style == "longterm":
+        score += 0.04 if horizon == "long" else -0.01
+
+    if investment_period in {"short", "intraday"}:
+        score += 0.03 if horizon == "daytrade" else -0.01
+    elif investment_period in {"long", "multi_year"}:
+        score += 0.03 if horizon == "long" else -0.01
+
+    if confidence == "high":
+        score += 0.01
+    elif confidence == "low" and _text(profile.get("risk_tolerance")).lower() == "low":
+        score -= 0.02
+
+    if markets and sector and sector in markets:
+        score += 0.03
+
+    if holdings and symbol in holdings:
+        score -= 0.05
+
+    return round(score, 4)
+
+
+def _personalization_notes(candidate: Mapping[str, Any], profile: Mapping[str, Any]) -> list[str]:
+    notes: list[str] = []
+    horizon = _text(candidate.get("horizon")).lower()
+    style = _text(profile.get("style")).lower()
+    investment_period = _text(profile.get("investment_period")).lower()
+    if style == "daytrade" and horizon == "daytrade":
+        notes.append("Matches the requested daytrade style.")
+    elif style == "longterm" and horizon == "long":
+        notes.append("Matches the requested long-term style.")
+    if investment_period in {"short", "intraday"} and horizon == "daytrade":
+        notes.append("Fits the requested short holding period.")
+    if investment_period in {"long", "multi_year"} and horizon == "long":
+        notes.append("Fits the requested long holding period.")
+    sector = _text(candidate.get("sector"))
+    markets = {item.lower() for item in _string_list(profile.get("interested_markets"))}
+    if sector and sector.lower() in markets:
+        notes.append(f"{sector} matches the preferred market set.")
+    return _unique_short_list(notes)
