@@ -177,6 +177,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     excluded = report.get("excluded_candidates", [])
     personal_profile = report.get("personal_profile", {})
     personal_notes = report.get("personal_notes", [])
+    top_candidate = report.get("top_candidate", {})
     cards = []
     if isinstance(candidates, list):
         for candidate in candidates:
@@ -237,6 +238,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     summary_line = _render_kv_list(summary)
     breakdown = summary.get("exclusion_breakdown", {}) if isinstance(summary, Mapping) else {}
     breakdown_line = _render_kv_list(breakdown)
+    top_candidate_block = _render_top_candidate_block(top_candidate)
     profile_line = _render_personal_profile_list(personal_profile)
     notes_line = "".join(f"<li>{escape(item)}</li>" for item in _list_items(personal_notes))
     if not notes_line:
@@ -245,6 +247,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
         f"<p class='subhead'>Horizon: {escape(_text(report.get('horizon'), 'swing'))}. "
         f"Count: {escape(str(report.get('count', 0)))}. "
         f"Rejected: {escape(str(report.get('rejected_count', 0)))}.</p>"
+        f"{top_candidate_block}"
         f"<section class='panel'><h2>Personal Context</h2><ul>{profile_line}</ul><ul>{notes_line}</ul></section>"
         f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
         f"<section class='panel'><h2>Exclusion Breakdown</h2><ul>{breakdown_line}</ul></section>"
@@ -317,6 +320,40 @@ def _render_personal_profile_list(value: Mapping[str, Any] | Any) -> str:
     if not items:
         items.append("<li class='empty'>None</li>")
     return "".join(items)
+
+
+def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
+    if not isinstance(value, Mapping):
+        return "<section class='panel'><h2>Top Candidate</h2><p class='empty'>No top candidate yet.</p></section>"
+
+    counter_evidence = "".join(
+        f"<li>{escape(item)}</li>" for item in _list_items(value.get("counter_evidence"))[:4]
+    )
+    if not counter_evidence:
+        counter_evidence = "<li class='empty'>No counter evidence yet.</li>"
+
+    evidence_lines = []
+    for item in _mapping_items(value.get("evidence"))[:4]:
+        evidence_lines.append(
+            f"<li>{escape(_text(item.get('label'), 'evidence'))}: {escape(_text(item.get('value'), ''))}</li>"
+        )
+    if not evidence_lines:
+        evidence_lines.append("<li class='empty'>No evidence yet.</li>")
+
+    return (
+        "<section class='panel'>"
+        "<h2>Top Candidate</h2>"
+        f"<p><strong>{escape(_text(value.get('symbol'), 'unknown'))}</strong> "
+        f"{escape(_text(value.get('name'), ''))}</p>"
+        f"<p><strong>Entry detail</strong> {escape(_text(value.get('entry_detail'), ''))}</p>"
+        f"<p><strong>Entry reason</strong> {escape(_text(value.get('entry_reason'), ''))}</p>"
+        f"<p><strong>Score</strong> {escape(_number(value.get('score')))}</p>"
+        f"<p><strong>Confidence</strong> {escape(_text(value.get('confidence'), ''))}</p>"
+        f"<p><strong>Liquidity</strong> {escape(_text(value.get('liquidity'), ''))}</p>"
+        f"<div><strong>Counter evidence</strong><ul>{counter_evidence}</ul></div>"
+        f"<div><strong>Evidence</strong><ul>{''.join(evidence_lines)}</ul></div>"
+        "</section>"
+    )
 
 
 def _mapping_items(value: Any) -> list[Mapping[str, Any]]:

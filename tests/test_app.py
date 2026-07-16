@@ -444,6 +444,7 @@ def test_candidates_view_returns_html_with_entry_details():
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "AlphaOS Candidates" in response.text
+    assert "Top Candidate" in response.text
     assert "Personal Context" in response.text
     assert "Opportunity Summary" in response.text
     assert "Exclusion Breakdown" in response.text
