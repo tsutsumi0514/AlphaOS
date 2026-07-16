@@ -63,6 +63,7 @@ def test_build_opportunity_candidates_ranks_strong_items_first():
     assert candidates[0]["symbol"] == "7203.T"
     assert candidates[0]["status"] == "buy_watch"
     assert candidates[0]["entry_timing"] == "buy_now"
+    assert candidates[0]["entry_detail"] in {"enter_on_strength", "core_entry", "open_now"}
     assert candidates[0]["entry_reason"]
     assert candidates[0]["confidence"] in {"medium", "high"}
     assert isinstance(candidates[0]["counter_evidence"], list)
@@ -121,7 +122,9 @@ def test_candidates_endpoint_returns_ranked_list():
     assert data["top_candidate"]["rank"] == 1
     assert "score" in data["candidates"][0]
     assert "entry_timing" in data["candidates"][0]
+    assert "entry_detail" in data["candidates"][0]
     assert "excluded_candidates" in data
     assert "rejected_count" in data
     assert "opportunity_summary" in data
     assert "exclusion_breakdown" in data["opportunity_summary"]
+    assert "entry_detail_breakdown" in data["opportunity_summary"]

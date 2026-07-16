@@ -19,6 +19,7 @@ class OpportunityCandidate(TypedDict):
     risk_alerts: list[str]
     evidence: list[dict[str, Any]]
     entry_timing: str
+    entry_detail: str
     entry_reason: str
     status: str
     counter_evidence: list[str]
@@ -108,6 +109,7 @@ def evaluate_candidate_pool(
         "buy_now_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "buy_now"),
         "wait_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "wait"),
         "avoid_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "avoid"),
+        "entry_detail_breakdown": _entry_detail_breakdown(ranked_candidates),
         "exclusion_breakdown": _exclusion_breakdown(excluded),
     }
     return {
@@ -136,6 +138,7 @@ def _build_candidate(
         briefing, item, liquidity, confidence, evidence
     )
     entry_timing = _entry_timing(score, briefing, item, horizon, liquidity)
+    entry_detail = _entry_detail(score, briefing, item, horizon, liquidity, entry_timing)
     status = _candidate_status(score, briefing, item, horizon, liquidity)
 
     candidate: OpportunityCandidate = {
@@ -148,6 +151,7 @@ def _build_candidate(
         "risk_alerts": risk_alerts,
         "evidence": evidence,
         "entry_timing": entry_timing,
+        "entry_detail": entry_detail,
         "entry_reason": _entry_reason(candidate_status=status, entry_timing=entry_timing, liquidity=liquidity, score=score),
         "status": status,
         "counter_evidence": counter_evidence,
@@ -223,6 +227,15 @@ def _exclusion_breakdown(excluded: list[OpportunityExclusion]) -> dict[str, int]
     for item in excluded:
         for tag in item.get("tags", []):
             breakdown[tag] = breakdown.get(tag, 0) + 1
+    return breakdown
+
+
+def _entry_detail_breakdown(candidates: list[OpportunityCandidate]) -> dict[str, int]:
+    breakdown: dict[str, int] = {}
+    for candidate in candidates:
+        detail = candidate.get("entry_detail")
+        if detail:
+            breakdown[detail] = breakdown.get(detail, 0) + 1
     return breakdown
 
 
@@ -453,6 +466,46 @@ def _entry_timing(
     if score >= 0.55:
         return "wait"
     return "avoid"
+
+
+def _entry_detail(
+    score: float,
+    briefing: Mapping[str, Any],
+    item: Mapping[str, Any],
+    horizon: str,
+    liquidity: str,
+    entry_timing: str,
+) -> str:
+    status = _text(item.get("status"))
+    market_state = _text(briefing.get("market_state"))
+
+    if horizon == "daytrade":
+        if entry_timing == "buy_now":
+            if liquidity == "high" and status == "strong":
+                return "open_now"
+            return "breakout_watch"
+        if entry_timing == "wait":
+            if liquidity == "high":
+                return "wait_for_pullback"
+            return "wait_for_volume"
+        return "skip_intraday"
+
+    if horizon == "long":
+        if entry_timing == "buy_now":
+            if market_state in {"bullish", "neutral", "balanced"}:
+                return "core_entry"
+            return "selective_entry"
+        if entry_timing == "wait":
+            return "build_position"
+        return "skip_for_now"
+
+    if entry_timing == "buy_now":
+        return "enter_on_strength"
+    if entry_timing == "wait":
+        if score >= 0.7 and status == "steady":
+            return "wait_for_confirmation"
+        return "watch_for_followthrough"
+    return "skip_for_now"
 
 
 def _candidate_status(

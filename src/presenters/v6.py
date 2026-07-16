@@ -196,6 +196,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
                 f"<p><strong>Score</strong> {escape(_number(candidate.get('score')))}</p>"
                 f"<p><strong>Confidence</strong> {escape(_text(candidate.get('confidence'), ''))}</p>"
                 f"<p><strong>Entry timing</strong> {escape(_text(candidate.get('entry_timing'), ''))}</p>"
+                f"<p><strong>Entry detail</strong> {escape(_text(candidate.get('entry_detail'), ''))}</p>"
                 f"<p><strong>Entry reason</strong> {escape(_text(candidate.get('entry_reason'), ''))}</p>"
                 f"<p><strong>Status</strong> {escape(_text(candidate.get('status'), ''))}</p>"
                 f"<p><strong>Liquidity</strong> {escape(_text(candidate.get('liquidity'), ''))}</p>"
@@ -285,6 +286,11 @@ def _render_kv_list(value: Mapping[str, Any] | Any) -> str:
         if item is None:
             continue
         items.append(f"<li><strong>{escape(key)}</strong>: {escape(str(item))}</li>")
+    if isinstance(value, Mapping):
+        detail_breakdown = value.get("entry_detail_breakdown")
+        if isinstance(detail_breakdown, Mapping):
+            for key, item in detail_breakdown.items():
+                items.append(f"<li><strong>{escape(str(key))}</strong>: {escape(str(item))}</li>")
     if not items:
         items.append("<li class='empty'>None</li>")
     return "".join(items)
