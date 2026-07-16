@@ -340,11 +340,14 @@ def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
     if not evidence_lines:
         evidence_lines.append("<li class='empty'>No evidence yet.</li>")
 
+    why_now = _build_why_now_line(value)
+
     return (
         "<section class='panel'>"
         "<h2>Top Candidate</h2>"
         f"<p><strong>{escape(_text(value.get('symbol'), 'unknown'))}</strong> "
         f"{escape(_text(value.get('name'), ''))}</p>"
+        f"<p><strong>Why now</strong> {escape(why_now)}</p>"
         f"<p><strong>Entry detail</strong> {escape(_text(value.get('entry_detail'), ''))}</p>"
         f"<p><strong>Entry reason</strong> {escape(_text(value.get('entry_reason'), ''))}</p>"
         f"<p><strong>Score</strong> {escape(_number(value.get('score')))}</p>"
@@ -354,6 +357,15 @@ def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
         f"<div><strong>Evidence</strong><ul>{''.join(evidence_lines)}</ul></div>"
         "</section>"
     )
+
+
+def _build_why_now_line(value: Mapping[str, Any]) -> str:
+    detail = _text(value.get("entry_detail"), "")
+    reason = _text(value.get("entry_reason"), "")
+    parts = [part for part in (detail, reason) if part]
+    if parts:
+        return " / ".join(parts)
+    return "No short summary yet."
 
 
 def _mapping_items(value: Any) -> list[Mapping[str, Any]]:
