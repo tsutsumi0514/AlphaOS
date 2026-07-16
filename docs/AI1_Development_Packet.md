@@ -75,6 +75,10 @@ AlphaOSは、個人投資家向けのAI投資支援OSです。
 7. `What-if Simulator` と `Knowledge Graph` は検証基盤の結果を見ながら最小構成で追加する
 8. `Personal AI` は候補提案のフィルタ層として追加する
 
+## V7 の補足
+- `Learning` の結果は `candidate_profile` として候補提案へ小さく反映する
+- walk-forward validation は training window の learning profile を evaluation fold にのみ適用する
+
 ## AI1への実装指示
 - 新しい分析ロジックを `briefing.py` に戻さない
 - 追加機能は `agents/` または `analyzers/` に置く

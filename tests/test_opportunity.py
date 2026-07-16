@@ -155,3 +155,48 @@ def test_learning_summary_adjusts_candidate_score():
     strong_score = evaluate_candidate_pool(strong_briefing)["candidates"][0]["score"]
 
     assert strong_score > weak_score
+
+
+def test_learning_profile_changes_candidate_timing_and_score():
+    base_briefing = {
+        "market_state": "neutral",
+        "fx_state": "neutral",
+        "confidence": "medium",
+        "risk_alerts": [],
+        "watchlist_status": [
+            {"symbol": "7203.T", "name": "Toyota", "status": "strong", "change_pct": 2.4, "volume": 2_000_000},
+        ],
+        "evidence": [
+            {"source": "market", "label": "Nikkei day-over-day change", "value": 0.4},
+            {"source": "fx", "label": "USD/JPY", "value": 150.2},
+        ],
+    }
+
+    strong_briefing = dict(base_briefing)
+    strong_briefing["candidate_learning_profile"] = {
+        "status": "strong",
+        "score_adjustment": 0.03,
+        "confidence_adjustment": 0.05,
+        "timing_bias": "buy_now",
+        "exclusion_bias": "relaxed",
+        "support_gap": 0.08,
+    }
+    weak_briefing = dict(base_briefing)
+    weak_briefing["candidate_learning_profile"] = {
+        "status": "weak",
+        "score_adjustment": -0.04,
+        "confidence_adjustment": -0.05,
+        "timing_bias": "avoid",
+        "exclusion_bias": "strict",
+        "support_gap": -0.08,
+    }
+
+    strong_candidate = evaluate_candidate_pool(strong_briefing)["candidates"][0]
+    weak_candidate = evaluate_candidate_pool(weak_briefing)["candidates"][0]
+
+    assert strong_candidate["score"] == 0.76
+    assert strong_candidate["confidence"] == "high"
+    assert strong_candidate["entry_timing"] == "buy_now"
+    assert weak_candidate["score"] == 0.69
+    assert weak_candidate["confidence"] == "low"
+    assert weak_candidate["entry_timing"] == "wait"

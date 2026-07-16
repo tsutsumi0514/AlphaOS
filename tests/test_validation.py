@@ -22,7 +22,7 @@ def test_run_opportunity_validation_simulates_profitable_trades(monkeypatch):
 
     monkeypatch.setattr(
         "src.simulation.validation._compose_replay_briefing",
-        lambda source, thresholds: {
+        lambda source, thresholds, learning_summary=None: {
             "briefing_id": "alpha",
             "market_state": "neutral",
             "fx_state": "weak yen",
@@ -61,6 +61,7 @@ def test_run_opportunity_validation_simulates_profitable_trades(monkeypatch):
     assert first_trade["net_return_pct"] < first_trade["gross_return_pct"]
     assert result["walk_forward"]["mode"] == "walk_forward"
     assert "daytrade" in result["walk_forward"]["by_horizon"]
+    assert result["walk_forward"]["by_horizon"]["swing"]["folds"][0]["learning_summary"]["candidate_profile"]["status"] in {"weak", "moderate", "strong", "insufficient"}
 
 
 def test_run_opportunity_validation_passes_minute_interval_to_loader(monkeypatch):
@@ -84,7 +85,7 @@ def test_run_opportunity_validation_passes_minute_interval_to_loader(monkeypatch
 
     monkeypatch.setattr(
         "src.simulation.validation._compose_replay_briefing",
-        lambda source, thresholds: {
+        lambda source, thresholds, learning_summary=None: {
             "briefing_id": "alpha",
             "market_state": "neutral",
             "fx_state": "weak yen",

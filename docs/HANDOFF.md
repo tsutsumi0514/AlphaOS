@@ -206,6 +206,7 @@ These base assets must remain intact while the opportunity layer is added above 
 ### v7
 - Add Learning AI and backtest-driven refinement.
 - Feed learning summaries back into candidate ranking and candidate presentation.
+- Keep walk-forward validation leakage-free by using only training-window learning profiles for each fold.
 
 ### v8
 - Add simple Knowledge Graph and personalization only if they improve candidate proposals.

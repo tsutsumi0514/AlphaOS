@@ -7,6 +7,7 @@ from uuid import uuid4
 from typing import Any
 
 from ..briefing import build_briefing
+from ..learning.feedback import build_candidate_learning_profile
 from ..learning.feedback import build_learning_summary
 from .decision_ai import build_decision_ai
 from .risk_ai import review_risk
@@ -25,6 +26,7 @@ def compose_briefing(
         learning_summary = dict(learning_summary)
 
     briefing["learning_summary"] = learning_summary
+    briefing["candidate_learning_profile"] = _candidate_learning_profile(learning_summary)
     briefing["risk_alerts"] = review_risk(briefing)
 
     _apply_learning_reflection(briefing, learning_summary)
@@ -52,6 +54,13 @@ def _apply_learning_reflection(briefing: dict[str, Any], learning_summary: dict[
 
     if status == "weak":
         _append_unique(briefing.setdefault("risk_alerts", []), note)
+
+
+def _candidate_learning_profile(learning_summary: Mapping[str, Any]) -> dict[str, Any]:
+    profile = learning_summary.get("candidate_profile")
+    if isinstance(profile, Mapping):
+        return dict(profile)
+    return build_candidate_learning_profile(learning_summary)
 
 
 def _append_unique(items: list[Any], value: str) -> None:

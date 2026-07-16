@@ -449,6 +449,7 @@ def test_candidates_endpoint_includes_learning_summary():
     assert response.status_code == 200
     data = response.json()
     assert "learning_summary" in data
+    assert "candidate_learning_profile" in data
     assert data["learning_summary"]["status"] in {"insufficient", "weak", "moderate", "strong"}
 
 
@@ -460,6 +461,7 @@ def test_daytrade_candidates_endpoint_uses_daytrade_mode():
     assert data["automation_mode"] == "advisory_only"
     assert data["strategy_mode"] == "daytrade"
     assert data["horizon"] == "daytrade"
+    assert "candidate_learning_profile" in data
     assert data["personal_profile"] == {"holdings": ["7203.T"]}
     assert all(candidate["horizon"] == "daytrade" for candidate in data["candidates"])
     assert data["top_candidate"]["horizon"] == "daytrade"

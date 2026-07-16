@@ -8,6 +8,7 @@ from statistics import mean, median, pstdev
 from typing import Any
 
 from ..learning.backtest import ReplayThresholds
+from ..learning.feedback import build_candidate_learning_profile
 from ..opportunity import evaluate_candidate_pool
 from ..watchlist import DEFAULT_WATCHLIST_SYMBOLS
 from .replay import _build_records
@@ -246,6 +247,16 @@ def _walk_forward_validation(
         }
 
         for horizon in horizons:
+            train_trades, train_baseline = _simulate_fold(
+                train_records,
+                thresholds=thresholds,
+                price_maps=price_maps,
+                benchmark_map=benchmark_map,
+                horizon=horizon,
+                transaction_cost_pct=transaction_cost_pct,
+                learning_summary=None,
+            )
+            training_learning_summary = _build_learning_summary_from_trades(train_trades)
             fold_trades, fold_baseline = _simulate_fold(
                 eval_records,
                 thresholds=thresholds,
@@ -253,6 +264,7 @@ def _walk_forward_validation(
                 benchmark_map=benchmark_map,
                 horizon=horizon,
                 transaction_cost_pct=transaction_cost_pct,
+                learning_summary=training_learning_summary,
             )
             horizon_trades[horizon].extend(fold_trades)
             horizon_baselines[horizon].extend(fold_baseline)
@@ -265,12 +277,16 @@ def _walk_forward_validation(
                     "summary": fold_summary,
                     "baseline": fold_baseline_summary,
                     "executed_trades": len(fold_trades),
+                    "learning_summary": training_learning_summary,
+                    "training_executed_trades": len(train_trades),
                 }
             )
             fold_entry["horizons"][horizon] = {
                 "summary": fold_summary,
                 "baseline": fold_baseline_summary,
                 "executed_trades": len(fold_trades),
+                "learning_summary": training_learning_summary,
+                "training_executed_trades": len(train_trades),
             }
 
         folds.append(fold_entry)
@@ -303,6 +319,7 @@ def _simulate_fold(
     benchmark_map: Mapping[date, float],
     horizon: str,
     transaction_cost_pct: float,
+    learning_summary: Mapping[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     holding_days = DEFAULT_HORIZON_HOLDING_DAYS[horizon]
     trades: list[dict[str, Any]] = []
@@ -318,7 +335,9 @@ def _simulate_fold(
         if open_until is not None and entry_date <= open_until:
             continue
 
-        briefing = _compose_replay_briefing(record["source"], thresholds)
+        briefing = _compose_replay_briefing(
+            record["source"], thresholds, learning_summary=learning_summary
+        )
         pool = evaluate_candidate_pool(briefing, horizon=horizon, limit=1)
         if not pool["candidates"]:
             continue
@@ -351,6 +370,68 @@ def _simulate_fold(
         open_until = trade["exit_date"]
 
     return trades, baselines
+
+
+def _build_learning_summary_from_trades(trades: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    summary = _summarize_trades(trades)
+    recent_5 = _summarize_trades(trades[-5:])
+    recent_20 = _summarize_trades(trades[-20:])
+    weighted_accuracy = _validation_weighted_accuracy(summary)
+    learning_summary = {
+        "status": _learning_status(summary),
+        "sample_size": int(summary.get("total", 0)),
+        "accuracy": summary.get("win_rate", 0.0),
+        "weighted_accuracy": weighted_accuracy,
+        "notes": _learning_notes(summary),
+        "summary": summary,
+        "periods": {
+            "all": summary,
+            "recent_5": recent_5,
+            "recent_20": recent_20,
+        },
+    }
+    learning_summary["candidate_profile"] = build_candidate_learning_profile(learning_summary)
+    return learning_summary
+
+
+def _validation_weighted_accuracy(summary: Mapping[str, Any]) -> float:
+    win_rate = _clamp01(_float(summary.get("win_rate")))
+    outperform_rate = _clamp01(_float(summary.get("outperform_rate")))
+    profit_factor = _float(summary.get("profit_factor"))
+    profit_factor_score = profit_factor / (profit_factor + 1.0) if profit_factor > 0 else 0.0
+    return round(_clamp01((win_rate * 0.5) + (outperform_rate * 0.3) + (profit_factor_score * 0.2)), 4)
+
+
+def _learning_status(summary: Mapping[str, Any]) -> str:
+    sample_size = int(summary.get("total", 0) or 0)
+    win_rate = _float(summary.get("win_rate"))
+    weighted_accuracy = _validation_weighted_accuracy(summary)
+    if sample_size == 0:
+        return "insufficient"
+    if weighted_accuracy >= 0.8 and win_rate >= 0.6:
+        return "strong"
+    if weighted_accuracy >= 0.6:
+        return "moderate"
+    return "weak"
+
+
+def _learning_notes(summary: Mapping[str, Any]) -> list[str]:
+    notes: list[str] = []
+    sample_size = int(summary.get("total", 0) or 0)
+    win_rate = _float(summary.get("win_rate"))
+    if sample_size == 0:
+        return ["No traded samples available."]
+    if win_rate >= 0.6:
+        notes.append("Training trades are holding up well.")
+    elif win_rate >= 0.5:
+        notes.append("Training trades are mixed.")
+    else:
+        notes.append("Training trades are weak.")
+    if _float(summary.get("outperform_rate")) >= 0.5:
+        notes.append("The strategy is beating the benchmark often enough to support learning.")
+    else:
+        notes.append("The strategy still needs stronger confirmation versus the benchmark.")
+    return notes[:2]
 
 
 def _simulate_trade(
@@ -640,6 +721,22 @@ def _empty_trade_summary() -> dict[str, Any]:
         "benchmark_average_return_pct": 0.0,
         "outperform_rate": 0.0,
     }
+
+
+def _float(value: Any, default: float = 0.0) -> float:
+    if isinstance(value, bool):
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    return default
+
+
+def _clamp01(value: float) -> float:
+    if value < 0.0:
+        return 0.0
+    if value > 1.0:
+        return 1.0
+    return value
 
 
 def _empty_validation_result(

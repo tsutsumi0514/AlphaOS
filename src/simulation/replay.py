@@ -259,7 +259,9 @@ def _fold_result_items(
 
 
 def _compose_replay_briefing(
-    source: Mapping[str, Any], thresholds: ReplayThresholds
+    source: Mapping[str, Any],
+    thresholds: ReplayThresholds,
+    learning_summary: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     replay_source = dict(source)
     if "news_item" not in replay_source or replay_source.get("news_item") is None:
@@ -268,7 +270,10 @@ def _compose_replay_briefing(
         )
 
     replay_source.update(_build_replay_overrides(source, thresholds))
-    return compose_briefing(replay_source, learning_summary=REPLAY_LEARNING_SUMMARY)
+    return compose_briefing(
+        replay_source,
+        learning_summary=learning_summary or REPLAY_LEARNING_SUMMARY,
+    )
 
 
 def _build_replay_overrides(

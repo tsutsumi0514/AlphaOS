@@ -63,6 +63,7 @@ def evaluate_candidate_pool(
     limit: int = 5,
 ) -> OpportunityPool:
     horizon_value = _normalize_horizon(horizon)
+    learning_profile = _learning_profile(briefing)
     watchlist_items = _watchlist_items(briefing)
     if not watchlist_items:
         return {
@@ -75,13 +76,14 @@ def evaluate_candidate_pool(
                 "buy_now_count": 0,
                 "wait_count": 0,
                 "avoid_count": 0,
+                "learning_status": _text(learning_profile.get("status")) or "insufficient",
             },
         }
 
     candidates: list[OpportunityCandidate] = []
     excluded: list[OpportunityExclusion] = []
     for item in watchlist_items:
-        candidate = _build_candidate(briefing, item, horizon_value)
+        candidate = _build_candidate(briefing, item, horizon_value, learning_profile)
         if _should_exclude(candidate):
             excluded.append(
                 {
@@ -111,6 +113,9 @@ def evaluate_candidate_pool(
         "avoid_count": sum(1 for candidate in ranked_candidates if candidate["entry_timing"] == "avoid"),
         "entry_detail_breakdown": _entry_detail_breakdown(ranked_candidates),
         "exclusion_breakdown": _exclusion_breakdown(excluded),
+        "learning_status": _text(learning_profile.get("status")) or "insufficient",
+        "learning_timing_bias": _text(learning_profile.get("timing_bias")) or "wait",
+        "learning_exclusion_bias": _text(learning_profile.get("exclusion_bias")) or "strict",
     }
     return {
         "candidates": ranked_candidates,
@@ -123,11 +128,12 @@ def _build_candidate(
     briefing: Mapping[str, Any],
     item: Mapping[str, Any],
     horizon: str,
+    learning_profile: Mapping[str, Any],
 ) -> OpportunityCandidate:
     symbol = _text(item.get("symbol")) or "UNKNOWN"
     name = _text(item.get("name")) or symbol
-    score = _candidate_score(briefing, item, horizon)
-    confidence = _candidate_confidence(score, briefing)
+    score = _candidate_score(briefing, item, horizon, learning_profile)
+    confidence = _candidate_confidence(score, briefing, learning_profile)
     liquidity = _liquidity_state(item)
     sector = _candidate_sector(item)
     sector_strength = _sector_strength(briefing, sector)
@@ -137,9 +143,9 @@ def _build_candidate(
     counter_evidence = _candidate_counter_evidence(
         briefing, item, liquidity, confidence, evidence
     )
-    entry_timing = _entry_timing(score, briefing, item, horizon, liquidity)
+    entry_timing = _entry_timing(score, briefing, item, horizon, liquidity, learning_profile)
     entry_detail = _entry_detail(score, briefing, item, horizon, liquidity, entry_timing)
-    status = _candidate_status(score, briefing, item, horizon, liquidity)
+    status = _candidate_status(score, briefing, item, horizon, liquidity, learning_profile)
 
     candidate: OpportunityCandidate = {
         "symbol": symbol,
@@ -243,9 +249,10 @@ def _candidate_score(
     briefing: Mapping[str, Any],
     item: Mapping[str, Any],
     horizon: str,
+    learning_profile: Mapping[str, Any],
 ) -> float:
     score = _base_score(item.get("status"))
-    score += _learning_score_adjustment(briefing)
+    score += _learning_score_adjustment(briefing, learning_profile)
 
     market_state = _text(briefing.get("market_state"))
     if market_state == "bullish":
@@ -296,7 +303,14 @@ def _candidate_score(
     return round(_clamp(score), 3)
 
 
-def _learning_score_adjustment(briefing: Mapping[str, Any]) -> float:
+def _learning_score_adjustment(
+    briefing: Mapping[str, Any], learning_profile: Mapping[str, Any]
+) -> float:
+    if isinstance(learning_profile, Mapping):
+        score_adjustment = _numeric_or_none(learning_profile.get("score_adjustment"))
+        if score_adjustment is not None:
+            return score_adjustment
+
     learning_summary = briefing.get("learning_summary")
     if not isinstance(learning_summary, Mapping):
         return 0.0
@@ -311,11 +325,23 @@ def _learning_score_adjustment(briefing: Mapping[str, Any]) -> float:
     return 0.0
 
 
-def _candidate_confidence(score: float, briefing: Mapping[str, Any]) -> str:
+def _candidate_confidence(
+    score: float,
+    briefing: Mapping[str, Any],
+    learning_profile: Mapping[str, Any],
+) -> str:
     briefing_confidence = normalize_confidence(briefing.get("confidence"))
-    if score >= 0.8 and briefing_confidence == "high":
+    profile_status = _text(learning_profile.get("status"))
+    confidence_adjustment = _numeric_or_none(learning_profile.get("confidence_adjustment")) or 0.0
+    high_threshold = 0.8 - min(max(confidence_adjustment, -0.05), 0.05)
+    medium_threshold = 0.6 - min(max(confidence_adjustment / 2.0, -0.03), 0.03)
+    if profile_status == "strong" and score >= 0.75 and briefing_confidence != "low":
         return "high"
-    if score >= 0.6:
+    if profile_status == "weak" and score < 0.7:
+        return "low"
+    if score >= high_threshold and briefing_confidence == "high":
+        return "high"
+    if score >= medium_threshold:
         return "medium"
     return "low"
 
@@ -452,14 +478,20 @@ def _entry_timing(
     item: Mapping[str, Any],
     horizon: str,
     liquidity: str,
+    learning_profile: Mapping[str, Any],
 ) -> str:
     status = _text(item.get("status"))
     market_state = _text(briefing.get("market_state"))
-    confidence = _candidate_confidence(score, briefing)
+    confidence = _candidate_confidence(score, briefing, learning_profile)
+    timing_bias = _text(learning_profile.get("timing_bias"))
 
     if horizon == "daytrade":
         if liquidity == "high" and score >= 0.65 and status == "strong":
             return "buy_now"
+        if timing_bias == "buy_now" and liquidity == "high" and score >= 0.62 and status == "strong":
+            return "buy_now"
+        if timing_bias == "avoid" and score < 0.7:
+            return "avoid"
         if liquidity in {"high", "medium"} and score >= 0.55 and market_state != "bearish":
             return "wait"
         return "avoid"
@@ -530,11 +562,15 @@ def _candidate_status(
     item: Mapping[str, Any],
     horizon: str,
     liquidity: str,
+    learning_profile: Mapping[str, Any],
 ) -> str:
     market_state = _text(briefing.get("market_state"))
     status = _text(item.get("status"))
-    confidence = _candidate_confidence(score, briefing)
+    confidence = _candidate_confidence(score, briefing, learning_profile)
+    exclusion_bias = _text(learning_profile.get("exclusion_bias"))
 
+    if exclusion_bias == "strict" and score < 0.52:
+        return "avoid"
     if horizon == "long" and (
         confidence == "low"
         or score < 0.7
@@ -597,6 +633,20 @@ def _normalize_horizon(value: Any) -> str:
     if text == "daytrade":
         return "daytrade"
     return "swing"
+
+
+def _learning_profile(briefing: Mapping[str, Any]) -> Mapping[str, Any]:
+    profile = briefing.get("candidate_learning_profile")
+    if isinstance(profile, Mapping):
+        return profile
+
+    learning_summary = briefing.get("learning_summary")
+    if isinstance(learning_summary, Mapping):
+        candidate_profile = learning_summary.get("candidate_profile")
+        if isinstance(candidate_profile, Mapping):
+            return candidate_profile
+
+    return {}
 
 
 def _watchlist_items(briefing: Mapping[str, Any]) -> list[Mapping[str, Any]]:
@@ -690,6 +740,14 @@ def _numeric(value: Any) -> float | None:
             return float(value.strip())
         except ValueError:
             return None
+    return None
+
+
+def _numeric_or_none(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
     return None
 
 

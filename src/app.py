@@ -324,6 +324,7 @@ def _build_candidate_report(
         "opportunity_summary": candidate_pool["summary"],
         "horizon": strategy_mode,
         "learning_summary": briefing.get("learning_summary"),
+        "candidate_learning_profile": briefing.get("candidate_learning_profile"),
         "personal_profile": personalized["profile"],
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],

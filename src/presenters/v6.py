@@ -180,6 +180,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     top_candidate = report.get("top_candidate", {})
     similar_cases = report.get("similar_cases", [])
     learning_summary = report.get("learning_summary", {})
+    candidate_learning_profile = report.get("candidate_learning_profile", {})
     cards = []
     if isinstance(candidates, list):
         for candidate in candidates:
@@ -242,7 +243,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     breakdown_line = _render_kv_list(breakdown)
     top_candidate_block = _render_top_candidate_block(top_candidate)
     similar_cases_block = _render_similar_cases_block(similar_cases)
-    learning_block = _render_learning_block(learning_summary)
+    learning_block = _render_learning_block(learning_summary, candidate_learning_profile)
     profile_line = _render_personal_profile_list(personal_profile)
     notes_line = "".join(f"<li>{escape(item)}</li>" for item in _list_items(personal_notes))
     if not notes_line:
@@ -369,9 +370,9 @@ def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
     )
 
 
-def _render_learning_block(value: Mapping[str, Any] | Any) -> str:
+def _render_learning_block(value: Mapping[str, Any] | Any, candidate_profile: Mapping[str, Any] | Any) -> str:
     if not isinstance(value, Mapping):
-        return "<section class='panel'><h2>Learning</h2><p class='empty'>None</p></section>"
+        value = {}
 
     items = []
     for key in ("status", "sample_size", "accuracy", "weighted_accuracy"):
@@ -390,6 +391,13 @@ def _render_learning_block(value: Mapping[str, Any] | Any) -> str:
             items.append(
                 f"<li><strong>recent_5 weighted_accuracy</strong>: {escape(_number(recent.get('weighted_accuracy')))}</li>"
             )
+
+    if isinstance(candidate_profile, Mapping):
+        for key in ("status", "score_adjustment", "confidence_adjustment", "timing_bias", "exclusion_bias", "support_gap"):
+            item = candidate_profile.get(key)
+            if item is None:
+                continue
+            items.append(f"<li><strong>candidate {escape(key)}</strong>: {escape(str(item))}</li>")
 
     notes = _list_items(value.get("notes"))
     if notes:

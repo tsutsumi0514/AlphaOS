@@ -10,6 +10,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - `risk_alerts`: Risk-first warnings from RiskAI and the analyzer layer.
 - `decision_ai`: Multi-view synthesis from ChairmanAI.
 - `learning_summary`: Recent learning performance and period snapshots.
+- `candidate_learning_profile`: Candidate-specific learning bias derived from the current learning summary.
 - `replay_summary`: Historical replay and validation signals when available.
 - `watchlist_status`: Current tracked symbols and their states.
 - `market_state`: Current broad market tone.
@@ -25,6 +26,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - `candidate_evidence`: Evidence subset supporting the candidate.
 - `counter_evidence`: Short counter-evidence list that explains why the candidate may fail.
 - `liquidity`: Simple liquidity state used by the candidate filter.
+- `learning_profile`: Light-weight bias derived from learning history for score, confidence, and timing adjustments.
 
 ## Rules
 - Do not force buy recommendations into `/briefing`.
@@ -40,6 +42,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - Use simple, explainable score components.
 - Break ties with risk first, then evidence strength, then timing confidence.
 - Candidate exclusion should remove low-confidence, thin-liquidity, and low-evidence noise.
+- Learning should adjust ranking only through a small, explainable bias derived from past outcomes.
 
 ## Entry Timing
 - `buy_now`: Candidate conditions are favorable now.
