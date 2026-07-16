@@ -320,12 +320,14 @@ def get_candidates(
         }
     )
     personalized = personalize_candidates(candidates, profile)
+    strategy_mode = "daytrade" if horizon.strip().lower() == "daytrade" else "swing"
     return {
         "automation_mode": "advisory_only",
+        "strategy_mode": strategy_mode,
         "count": len(personalized["candidates"]),
         "rejected_count": len(candidate_pool["excluded"]),
         "opportunity_summary": candidate_pool["summary"],
-        "horizon": "daytrade" if horizon.strip().lower() == "daytrade" else "swing",
+        "horizon": strategy_mode,
         "personal_profile": personalized["profile"],
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],
@@ -378,12 +380,14 @@ def get_candidates_view(
         }
     )
     personalized = personalize_candidates(candidates, profile)
+    strategy_mode = "daytrade" if horizon.strip().lower() == "daytrade" else "swing"
     report = {
         "automation_mode": "advisory_only",
+        "strategy_mode": strategy_mode,
         "count": len(personalized["candidates"]),
         "rejected_count": len(candidate_pool["excluded"]),
         "opportunity_summary": candidate_pool["summary"],
-        "horizon": "daytrade" if horizon.strip().lower() == "daytrade" else "swing",
+        "horizon": strategy_mode,
         "personal_profile": personalized["profile"],
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],

@@ -420,6 +420,7 @@ def test_candidates_endpoint_applies_personal_profile(monkeypatch):
     assert response.status_code == 200
     data = response.json()
     assert data["automation_mode"] == "advisory_only"
+    assert data["strategy_mode"] == "swing"
     assert data["personal_profile"] == {"holdings": ["7203.T"]}
     assert data["candidates"][0]["symbol"] != "7203.T"
     assert data["top_candidate"]["symbol"] == data["candidates"][0]["symbol"]
@@ -431,6 +432,7 @@ def test_candidates_endpoint_includes_opportunity_summary():
     assert response.status_code == 200
     data = response.json()
     assert data["automation_mode"] == "advisory_only"
+    assert data["strategy_mode"] == "swing"
     summary = data["opportunity_summary"]
     assert summary["ranked_count"] == data["count"]
     assert summary["excluded_count"] == data["rejected_count"]
@@ -448,6 +450,7 @@ def test_candidates_view_returns_html_with_entry_details():
     assert "AlphaOS Candidates" in response.text
     assert "Mode" in response.text
     assert "advisory_only" in response.text
+    assert "Strategy" in response.text
     assert "Top Candidate" in response.text
     assert "Why now" in response.text
     assert "Personal Context" in response.text
