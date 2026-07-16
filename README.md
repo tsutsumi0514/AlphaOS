@@ -85,6 +85,7 @@
 - `src/simulation/what_if.py`: Simple scenario simulator
 - `src/opportunity.py`: Ranked buy-candidate proposal helpers with exclusion and summary counts
 - `src/presenters/v6.py`: candidate UI with top candidate, why-now summary, personal context, entry detail, entry reason, counter evidence, and exclusion tags
+- `src/app.py`: candidate outputs are advisory-only and do not trigger auto trading
 - `src/storage/market_memory.py`: Market memory persistence and similar-case retrieval
 - `src/knowledge_graph.py`: Lightweight causal graph builder
 - `src/personal.py`: Personal profile filters for candidate ranking

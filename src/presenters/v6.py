@@ -246,7 +246,8 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     body = (
         f"<p class='subhead'>Horizon: {escape(_text(report.get('horizon'), 'swing'))}. "
         f"Count: {escape(str(report.get('count', 0)))}. "
-        f"Rejected: {escape(str(report.get('rejected_count', 0)))}.</p>"
+        f"Rejected: {escape(str(report.get('rejected_count', 0)))}. "
+        f"Mode: {escape(_text(report.get('automation_mode'), 'advisory_only'))}.</p>"
         f"{top_candidate_block}"
         f"<section class='panel'><h2>Personal Context</h2><ul>{profile_line}</ul><ul>{notes_line}</ul></section>"
         f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
@@ -345,6 +346,7 @@ def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
     return (
         "<section class='panel'>"
         "<h2>Top Candidate</h2>"
+        "<p><strong>Mode</strong> advisory_only</p>"
         f"<p><strong>{escape(_text(value.get('symbol'), 'unknown'))}</strong> "
         f"{escape(_text(value.get('name'), ''))}</p>"
         f"<p><strong>Why now</strong> {escape(why_now)}</p>"

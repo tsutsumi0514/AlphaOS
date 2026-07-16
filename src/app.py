@@ -321,6 +321,7 @@ def get_candidates(
     )
     personalized = personalize_candidates(candidates, profile)
     return {
+        "automation_mode": "advisory_only",
         "count": len(personalized["candidates"]),
         "rejected_count": len(candidate_pool["excluded"]),
         "opportunity_summary": candidate_pool["summary"],
@@ -378,6 +379,7 @@ def get_candidates_view(
     )
     personalized = personalize_candidates(candidates, profile)
     report = {
+        "automation_mode": "advisory_only",
         "count": len(personalized["candidates"]),
         "rejected_count": len(candidate_pool["excluded"]),
         "opportunity_summary": candidate_pool["summary"],
