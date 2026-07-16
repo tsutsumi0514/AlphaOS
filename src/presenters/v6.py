@@ -24,6 +24,10 @@ def render_validation_page(report: Mapping[str, Any]) -> HTMLResponse:
     return HTMLResponse(_render_validation_page(report))
 
 
+def render_candidates_page(report: Mapping[str, Any]) -> HTMLResponse:
+    return HTMLResponse(_render_candidates_page(report))
+
+
 def _render_what_if_page(report: Mapping[str, Any]) -> str:
     scenarios = report.get("scenarios", [])
     cards = []
@@ -168,6 +172,72 @@ def _render_validation_page(report: Mapping[str, Any]) -> str:
     return _wrap_page("AlphaOS Opportunity Validation", body)
 
 
+def _render_candidates_page(report: Mapping[str, Any]) -> str:
+    candidates = report.get("candidates", [])
+    excluded = report.get("excluded_candidates", [])
+    cards = []
+    if isinstance(candidates, list):
+        for candidate in candidates:
+            if not isinstance(candidate, Mapping):
+                continue
+            evidence_lines = []
+            for item in _mapping_items(candidate.get("evidence"))[:4]:
+                evidence_lines.append(
+                    f"<li>{escape(_text(item.get('label'), 'evidence'))}: "
+                    f"{escape(_text(item.get('value'), ''))}</li>"
+                )
+            if not evidence_lines:
+                evidence_lines.append("<li class='empty'>No evidence yet.</li>")
+            cards.append(
+                "<article class='card'>"
+                f"<h2>#{escape(str(candidate.get('rank', '')))} {escape(_text(candidate.get('symbol'), 'candidate'))}</h2>"
+                f"<p><strong>Name</strong> {escape(_text(candidate.get('name'), ''))}</p>"
+                f"<p><strong>Horizon</strong> {escape(_text(candidate.get('horizon'), ''))}</p>"
+                f"<p><strong>Score</strong> {escape(_number(candidate.get('score')))}</p>"
+                f"<p><strong>Confidence</strong> {escape(_text(candidate.get('confidence'), ''))}</p>"
+                f"<p><strong>Entry timing</strong> {escape(_text(candidate.get('entry_timing'), ''))}</p>"
+                f"<p><strong>Entry reason</strong> {escape(_text(candidate.get('entry_reason'), ''))}</p>"
+                f"<p><strong>Status</strong> {escape(_text(candidate.get('status'), ''))}</p>"
+                f"<p><strong>Liquidity</strong> {escape(_text(candidate.get('liquidity'), ''))}</p>"
+                f"<p><strong>Note</strong> {escape(_text(candidate.get('note'), ''))}</p>"
+                f"<p><strong>Sector</strong> {escape(_text(candidate.get('sector'), ''))}</p>"
+                f"<p><strong>Sector strength</strong> {escape(_text(candidate.get('sector_strength'), ''))}</p>"
+                f"<div><strong>Reasons</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('reasons'))[:4])}</ul></div>"
+                f"<div><strong>Risk alerts</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('risk_alerts'))[:4])}</ul></div>"
+                f"<div><strong>Counter evidence</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('counter_evidence'))[:4])}</ul></div>"
+                f"<div><strong>Evidence</strong><ul>{''.join(evidence_lines)}</ul></div>"
+                "</article>"
+            )
+    if not cards:
+        cards.append("<p class='empty'>No candidates yet.</p>")
+
+    excluded_lines = []
+    if isinstance(excluded, list):
+        for item in excluded[:8]:
+            if not isinstance(item, Mapping):
+                continue
+            excluded_lines.append(
+                "<li>"
+                f"<strong>{escape(_text(item.get('symbol'), 'unknown'))}</strong> "
+                f"{escape(_text(item.get('reason'), ''))}"
+                "</li>"
+            )
+    if not excluded_lines:
+        excluded_lines.append("<li class='empty'>No excluded candidates yet.</li>")
+
+    summary = report.get("opportunity_summary", {})
+    summary_line = _render_kv_list(summary)
+    body = (
+        f"<p class='subhead'>Horizon: {escape(_text(report.get('horizon'), 'swing'))}. "
+        f"Count: {escape(str(report.get('count', 0)))}. "
+        f"Rejected: {escape(str(report.get('rejected_count', 0)))}.</p>"
+        f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
+        "<div class='grid'>" + "".join(cards) + "</div>"
+        "<section class='panel'><h2>Excluded Candidates</h2><ul>" + "".join(excluded_lines) + "</ul></section>"
+    )
+    return _wrap_page("AlphaOS Candidates", body)
+
+
 def _wrap_page(title: str, body: str) -> str:
     return f"""<!doctype html>
 <html lang="en">
@@ -210,6 +280,16 @@ def _render_kv_list(value: Mapping[str, Any] | Any) -> str:
     if not items:
         items.append("<li class='empty'>None</li>")
     return "".join(items)
+
+
+def _mapping_items(value: Any) -> list[Mapping[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    items: list[Mapping[str, Any]] = []
+    for item in value:
+        if isinstance(item, Mapping):
+            items.append(item)
+    return items
 
 
 def _percent(value: Any) -> str:

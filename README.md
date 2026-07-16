@@ -39,6 +39,8 @@
   - `python -m src.main`
 - Open the web UI:
   - `http://127.0.0.1:8000/`
+- Open the candidate UI:
+  - `http://127.0.0.1:8000/candidates/view`
 - Use the JSON API:
   - `http://127.0.0.1:8000/briefing`
 - Use minute-granularity inputs when needed:

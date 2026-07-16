@@ -438,6 +438,18 @@ def test_candidates_endpoint_includes_opportunity_summary():
     assert "avoid_count" in summary
 
 
+def test_candidates_view_returns_html_with_entry_details():
+    response = client.get("/candidates/view?limit=3")
+
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "AlphaOS Candidates" in response.text
+    assert "Opportunity Summary" in response.text
+    assert "Entry reason" in response.text
+    assert "Counter evidence" in response.text
+    assert "Excluded Candidates" in response.text
+
+
 def test_what_if_endpoint_returns_scenarios():
     response = client.post("/what-if", json={"scenarios": ["yen_appreciation", "rate_cut"]})
 

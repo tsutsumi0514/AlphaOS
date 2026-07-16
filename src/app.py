@@ -16,6 +16,7 @@ from .simulation.replay import run_replay_simulation
 from .simulation.validation import run_opportunity_validation
 from .simulation.what_if import run_what_if_simulation
 from .presenters.v6 import render_knowledge_graph_page
+from .presenters.v6 import render_candidates_page
 from .presenters.v6 import render_replay_compare_page
 from .presenters.v6 import render_validation_page
 from .presenters.v6 import render_what_if_page
@@ -331,6 +332,64 @@ def get_candidates(
         "top_candidate": personalized["candidates"][0] if personalized["candidates"] else None,
         "briefing_id": briefing.get("briefing_id"),
     }
+
+
+@app.get("/candidates/view", response_class=HTMLResponse)
+def get_candidates_view(
+    horizon: str = Query(default="swing", description="Candidate horizon"),
+    limit: int = Query(default=5, ge=1, le=20),
+    holdings: str | None = Query(default=None, description="Comma-separated current holdings"),
+    investment_period: str | None = Query(default=None, description="Investment period"),
+    risk_tolerance: str | None = Query(default=None, description="Risk tolerance"),
+    style: str | None = Query(default=None, description="Investment style"),
+    interested_markets: str | None = Query(default=None, description="Comma-separated interested markets"),
+    usd_jpy: float | None = Query(default=None, description="USD/JPY rate"),
+    market_change_pct: float | None = Query(
+        default=None, description="Nikkei 225 day-over-day percent change"
+    ),
+    watchlist_symbols: str | None = Query(
+        default=None, description="Comma-separated watchlist symbols"
+    ),
+    watchlist_symbol: str | None = Query(
+        default=None, description="Single watchlist symbol override"
+    ),
+    interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
+):
+    source = collect_briefing_source(
+        usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval=interval
+    )
+    briefing = compose_briefing(source)
+    candidate_pool = evaluate_candidate_pool(briefing, horizon=horizon, limit=limit)
+    candidates = candidate_pool["candidates"]
+    profile = normalize_personal_profile(
+        {
+            "holdings": [item.strip() for item in holdings.split(",") if item.strip()]
+            if isinstance(holdings, str) and holdings.strip()
+            else [],
+            "investment_period": investment_period,
+            "risk_tolerance": risk_tolerance,
+            "style": style,
+            "interested_markets": [
+                item.strip() for item in interested_markets.split(",") if item.strip()
+            ]
+            if isinstance(interested_markets, str) and interested_markets.strip()
+            else [],
+        }
+    )
+    personalized = personalize_candidates(candidates, profile)
+    report = {
+        "count": len(personalized["candidates"]),
+        "rejected_count": len(candidate_pool["excluded"]),
+        "opportunity_summary": candidate_pool["summary"],
+        "horizon": "daytrade" if horizon.strip().lower() == "daytrade" else "swing",
+        "personal_profile": personalized["profile"],
+        "personal_notes": personalized["notes"],
+        "candidates": personalized["candidates"],
+        "excluded_candidates": candidate_pool["excluded"],
+        "top_candidate": personalized["candidates"][0] if personalized["candidates"] else None,
+        "briefing_id": briefing.get("briefing_id"),
+    }
+    return render_candidates_page(report)
 
 
 @app.post("/what-if")
