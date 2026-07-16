@@ -74,7 +74,7 @@ This makes later agent coordination, learning, and backtesting possible.
 - `v5`: Opportunity Engine with ranked buy candidates and entry timing.
 - `v6`: Market Memory that helps candidate quality when it proves useful.
 - `v7`: Learning loop that improves candidate ranking with real outcomes and feeds learning summaries and training-window profiles back into candidate scoring.
-- `v8`: Knowledge Graph and personalization only if they improve candidate proposals.
+- `v8`: Knowledge Graph and personalization only if they improve candidate proposals, with graph context surfaced in candidate review when useful.
 ## Interval-Aware Data Flow
 
 - Live collection, replay, and validation now accept an `interval` argument.

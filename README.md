@@ -93,6 +93,7 @@
 - `src/app.py`: `daytrade-candidates` offers a dedicated daytrade-oriented candidate view
 - `src/app.py`: candidate outputs include learning summary context for ranking transparency
 - `src/app.py`: walk-forward validation carries training-window learning profiles into evaluation folds
+- `src/app.py`: candidate outputs include knowledge graph context for explanation and candidate review
 - `src/storage/market_memory.py`: Market memory persistence and similar-case retrieval
 - `src/knowledge_graph.py`: Lightweight causal graph builder
 - `src/personal.py`: Personal profile filters for candidate ranking

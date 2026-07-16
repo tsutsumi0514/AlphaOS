@@ -27,6 +27,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - `counter_evidence`: Short counter-evidence list that explains why the candidate may fail.
 - `liquidity`: Simple liquidity state used by the candidate filter.
 - `learning_profile`: Light-weight bias derived from learning history for score, confidence, and timing adjustments.
+- `candidate_graph`: Lightweight Knowledge Graph context that helps explain the candidate path.
 
 ## Rules
 - Do not force buy recommendations into `/briefing`.
@@ -43,6 +44,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - Break ties with risk first, then evidence strength, then timing confidence.
 - Candidate exclusion should remove low-confidence, thin-liquidity, and low-evidence noise.
 - Learning should adjust ranking only through a small, explainable bias derived from past outcomes.
+- Graph context should stay lightweight and explanatory, not become a second ranking engine.
 
 ## Entry Timing
 - `buy_now`: Candidate conditions are favorable now.

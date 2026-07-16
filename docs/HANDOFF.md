@@ -210,6 +210,7 @@ These base assets must remain intact while the opportunity layer is added above 
 
 ### v8
 - Add simple Knowledge Graph and personalization only if they improve candidate proposals.
+- Surface the candidate graph context alongside ranked candidates when it helps review.
 
 ## Priority Order
 1. Keep the current v1 briefing stable.

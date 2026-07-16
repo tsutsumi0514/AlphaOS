@@ -450,6 +450,8 @@ def test_candidates_endpoint_includes_learning_summary():
     data = response.json()
     assert "learning_summary" in data
     assert "candidate_learning_profile" in data
+    assert "candidate_graph" in data
+    assert data["candidate_graph_summary"]["node_count"] > 0
     assert data["learning_summary"]["status"] in {"insufficient", "weak", "moderate", "strong"}
 
 
@@ -499,6 +501,7 @@ def test_candidates_view_returns_html_with_entry_details():
     assert "Counter evidence" in response.text
     assert "Excluded Candidates" in response.text
     assert "holdings" in response.text
+    assert "Knowledge Graph" in response.text
 
 
 def test_daytrade_candidates_view_returns_html():
@@ -510,6 +513,7 @@ def test_daytrade_candidates_view_returns_html():
     assert "Strategy" in response.text
     assert "daytrade" in response.text
     assert "Learning" in response.text
+    assert "Knowledge Graph" in response.text
 
 
 def test_what_if_endpoint_returns_scenarios():

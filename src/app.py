@@ -299,6 +299,7 @@ def _build_candidate_report(
     candidate_pool = evaluate_candidate_pool(briefing, horizon=horizon, limit=limit)
     candidates = candidate_pool["candidates"]
     similar_cases = find_similar_market_memory(briefing, limit=limit)
+    candidate_graph = build_knowledge_graph(briefing, scenarios=())
     profile = normalize_personal_profile(
         {
             "holdings": [item.strip() for item in holdings.split(",") if item.strip()]
@@ -316,6 +317,8 @@ def _build_candidate_report(
     )
     personalized = personalize_candidates(candidates, profile)
     strategy_mode = "daytrade" if horizon.strip().lower() == "daytrade" else "swing"
+    graph_nodes = candidate_graph.get("nodes", [])
+    graph_edges = candidate_graph.get("edges", [])
     return {
         "automation_mode": "advisory_only",
         "strategy_mode": strategy_mode,
@@ -325,6 +328,14 @@ def _build_candidate_report(
         "horizon": strategy_mode,
         "learning_summary": briefing.get("learning_summary"),
         "candidate_learning_profile": briefing.get("candidate_learning_profile"),
+        "candidate_graph": candidate_graph,
+        "candidate_graph_summary": {
+            "node_count": len(graph_nodes) if isinstance(graph_nodes, list) else 0,
+            "edge_count": len(graph_edges) if isinstance(graph_edges, list) else 0,
+            "scenario_count": len(candidate_graph.get("scenario_report", {}).get("scenarios", []))
+            if isinstance(candidate_graph.get("scenario_report"), dict)
+            else 0,
+        },
         "personal_profile": personalized["profile"],
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],
