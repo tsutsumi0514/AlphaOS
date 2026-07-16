@@ -433,6 +433,7 @@ def test_candidates_endpoint_includes_opportunity_summary():
     data = response.json()
     assert data["automation_mode"] == "advisory_only"
     assert data["strategy_mode"] == "swing"
+    assert "similar_cases" in data
     summary = data["opportunity_summary"]
     assert summary["ranked_count"] == data["count"]
     assert summary["excluded_count"] == data["rejected_count"]
@@ -453,6 +454,7 @@ def test_candidates_view_returns_html_with_entry_details():
     assert "Strategy" in response.text
     assert "Top Candidate" in response.text
     assert "Why now" in response.text
+    assert "Similar Cases" in response.text
     assert "Personal Context" in response.text
     assert "Opportunity Summary" in response.text
     assert "Exclusion Breakdown" in response.text

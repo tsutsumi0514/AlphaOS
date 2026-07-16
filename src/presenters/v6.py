@@ -178,6 +178,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     personal_profile = report.get("personal_profile", {})
     personal_notes = report.get("personal_notes", [])
     top_candidate = report.get("top_candidate", {})
+    similar_cases = report.get("similar_cases", [])
     cards = []
     if isinstance(candidates, list):
         for candidate in candidates:
@@ -239,6 +240,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     breakdown = summary.get("exclusion_breakdown", {}) if isinstance(summary, Mapping) else {}
     breakdown_line = _render_kv_list(breakdown)
     top_candidate_block = _render_top_candidate_block(top_candidate)
+    similar_cases_block = _render_similar_cases_block(similar_cases)
     profile_line = _render_personal_profile_list(personal_profile)
     notes_line = "".join(f"<li>{escape(item)}</li>" for item in _list_items(personal_notes))
     if not notes_line:
@@ -250,6 +252,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
         f"Strategy: {escape(_text(report.get('strategy_mode'), _text(report.get('horizon'), 'swing')))}. "
         f"Mode: {escape(_text(report.get('automation_mode'), 'advisory_only'))}.</p>"
         f"{top_candidate_block}"
+        f"{similar_cases_block}"
         f"<section class='panel'><h2>Personal Context</h2><ul>{profile_line}</ul><ul>{notes_line}</ul></section>"
         f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
         f"<section class='panel'><h2>Exclusion Breakdown</h2><ul>{breakdown_line}</ul></section>"
@@ -361,6 +364,27 @@ def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
         f"<div><strong>Evidence</strong><ul>{''.join(evidence_lines)}</ul></div>"
         "</section>"
     )
+
+
+def _render_similar_cases_block(value: Any) -> str:
+    if not isinstance(value, list):
+        return "<section class='panel'><h2>Similar Cases</h2><p class='empty'>No similar cases yet.</p></section>"
+
+    lines = []
+    for case in value[:5]:
+        if not isinstance(case, Mapping):
+            continue
+        lines.append(
+            "<li>"
+            f"<strong>{escape(_text(case.get('briefing_id'), 'unknown'))}</strong> "
+            f"score {escape(str(case.get('score', 0.0)))} "
+            f"{escape(', '.join(_list_items(case.get('match_reasons'))))}"
+            "</li>"
+        )
+    if not lines:
+        lines.append("<li class='empty'>No similar cases yet.</li>")
+
+    return "<section class='panel'><h2>Similar Cases</h2><ul>" + "".join(lines) + "</ul></section>"
 
 
 def _build_why_now_line(value: Mapping[str, Any]) -> str:

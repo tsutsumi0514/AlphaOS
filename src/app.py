@@ -304,6 +304,7 @@ def get_candidates(
     briefing = compose_briefing(source)
     candidate_pool = evaluate_candidate_pool(briefing, horizon=horizon, limit=limit)
     candidates = candidate_pool["candidates"]
+    similar_cases = find_similar_market_memory(briefing, limit=limit)
     profile = normalize_personal_profile(
         {
             "holdings": [item.strip() for item in holdings.split(",") if item.strip()]
@@ -332,6 +333,7 @@ def get_candidates(
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],
         "excluded_candidates": candidate_pool["excluded"],
+        "similar_cases": similar_cases,
         "top_candidate": personalized["candidates"][0] if personalized["candidates"] else None,
         "briefing_id": briefing.get("briefing_id"),
     }
@@ -364,6 +366,7 @@ def get_candidates_view(
     briefing = compose_briefing(source)
     candidate_pool = evaluate_candidate_pool(briefing, horizon=horizon, limit=limit)
     candidates = candidate_pool["candidates"]
+    similar_cases = find_similar_market_memory(briefing, limit=limit)
     profile = normalize_personal_profile(
         {
             "holdings": [item.strip() for item in holdings.split(",") if item.strip()]
@@ -392,6 +395,7 @@ def get_candidates_view(
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],
         "excluded_candidates": candidate_pool["excluded"],
+        "similar_cases": similar_cases,
         "top_candidate": personalized["candidates"][0] if personalized["candidates"] else None,
         "briefing_id": briefing.get("briefing_id"),
     }
