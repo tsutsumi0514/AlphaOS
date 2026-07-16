@@ -84,7 +84,7 @@
 - `src/simulation/validation.py`: Virtual-trading validation for candidates
 - `src/simulation/what_if.py`: Simple scenario simulator
 - `src/opportunity.py`: Ranked buy-candidate proposal helpers with exclusion and summary counts
-- `src/presenters/v6.py`: candidate UI with top candidate, similar cases, why-now summary, personal context, entry detail, entry reason, counter evidence, and exclusion tags
+- `src/presenters/v6.py`: candidate UI with top candidate, similar cases, outcome summary, why-now summary, personal context, entry detail, entry reason, counter evidence, and exclusion tags
 - `src/app.py`: candidate outputs are advisory-only and do not trigger auto trading
 - `src/app.py`: candidate outputs expose `strategy_mode` for daytrade and swing separation
 - `src/storage/market_memory.py`: Market memory persistence and similar-case retrieval

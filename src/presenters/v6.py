@@ -374,17 +374,33 @@ def _render_similar_cases_block(value: Any) -> str:
     for case in value[:5]:
         if not isinstance(case, Mapping):
             continue
+        outcome = _render_outcome_summary(case.get("outcome"))
         lines.append(
             "<li>"
             f"<strong>{escape(_text(case.get('briefing_id'), 'unknown'))}</strong> "
             f"score {escape(str(case.get('score', 0.0)))} "
             f"{escape(', '.join(_list_items(case.get('match_reasons'))))}"
+            f"<div><strong>Outcome</strong> {escape(outcome)}</div>"
             "</li>"
         )
     if not lines:
         lines.append("<li class='empty'>No similar cases yet.</li>")
 
     return "<section class='panel'><h2>Similar Cases</h2><ul>" + "".join(lines) + "</ul></section>"
+
+
+def _render_outcome_summary(value: Any) -> str:
+    if not isinstance(value, Mapping):
+        return "pending"
+    items: list[str] = []
+    for key in ("market_change_pct", "usd_jpy", "status", "result"):
+        item = value.get(key)
+        if item is None:
+            continue
+        items.append(f"{key}={item}")
+    if not items:
+        return "pending"
+    return ", ".join(items[:3])
 
 
 def _build_why_now_line(value: Mapping[str, Any]) -> str:

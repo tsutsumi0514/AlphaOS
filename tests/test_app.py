@@ -444,6 +444,17 @@ def test_candidates_endpoint_includes_opportunity_summary():
 
 
 def test_candidates_view_returns_html_with_entry_details():
+    import src.app as app_module
+
+    app_module.find_similar_market_memory = lambda briefing, limit=5: [
+        {
+            "briefing_id": "alpha",
+            "score": 0.91,
+            "match_reasons": ["market_state", "fx_state"],
+            "outcome": {"status": "win", "market_change_pct": 1.2, "usd_jpy": 156.2},
+        }
+    ]
+
     response = client.get("/candidates/view?limit=3&holdings=7203.T")
 
     assert response.status_code == 200
@@ -455,6 +466,7 @@ def test_candidates_view_returns_html_with_entry_details():
     assert "Top Candidate" in response.text
     assert "Why now" in response.text
     assert "Similar Cases" in response.text
+    assert "Outcome" in response.text
     assert "Personal Context" in response.text
     assert "Opportunity Summary" in response.text
     assert "Exclusion Breakdown" in response.text
