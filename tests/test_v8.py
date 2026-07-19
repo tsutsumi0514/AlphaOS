@@ -70,7 +70,9 @@ def test_evaluate_candidate_pool_exposes_candidate_reason_and_unavailable_liquid
 
     assert pool["candidates"]
     candidate = pool["candidates"][0]
-    assert candidate["candidate_reason"] == candidate["entry_reason"]
+    assert candidate["candidate_reason"]
+    assert candidate["candidate_reason"] != candidate["entry_reason"]
+    assert candidate["candidate_reason"].startswith("7203.T:")
     assert "\n" not in candidate["candidate_reason"]
     assert candidate["liquidity"] == "unavailable"
     assert candidate["counter_evidence"]
@@ -164,10 +166,10 @@ def test_replay_compare_view_shows_replay_summary(monkeypatch):
     response = client.get("/replay/compare")
 
     assert response.status_code == 200
-    assert "AlphaOS Replay Comparison" in response.text
+    assert "AlphaOS Replay 比較" in response.text
     assert "Replay summary" in response.text
     assert "weighted_accuracy" in response.text
-    assert "Similar Cases" in response.text
+    assert "類似事例" in response.text
 
 
 def test_walk_forward_validation_uses_bounded_training_window(monkeypatch):

@@ -1,9 +1,13 @@
+import asyncio
 import logging
 import os
+from contextlib import asynccontextmanager
+from contextlib import suppress
 from datetime import datetime, timezone
+from collections.abc import Mapping
 
 from fastapi import Body, FastAPI, HTTPException, Query
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 from .agents.chairman_ai import compose_briefing
 from .collectors.briefing_inputs import collect_briefing_source
@@ -32,11 +36,21 @@ from .storage.market_memory import update_market_memory
 from .storage.outcome_history import record_market_outcome
 from .presenters.history import render_history_page
 from .presenters.web import render_homepage
+from .services.live_refresh import DEFAULT_BRIEFING_INTERVAL
+from .services.live_refresh import attach_live_refresh_metadata
+from .services.live_refresh import build_live_snapshot
+from .services.live_refresh import live_refresh_enabled
+from .services.live_refresh import live_refresh_interval_seconds
+from .services.live_refresh import run_live_refresh_loop
 from .storage.news_history import record_news_snapshot
 
-app = FastAPI(title="AlphaOS")
 logger = logging.getLogger(__name__)
 PUBLIC_MODE_ENV = "ALPHAOS_PUBLIC_MODE"
+_FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#20262e"/>
+  <path d="M8 22L12.5 10H15.8L20 22H17.4L16.4 19.1H11.8L10.8 22H8ZM12.5 17.3H15.6L14.1 12.8L12.5 17.3Z" fill="#f5f3ef"/>
+  <circle cx="23.5" cy="21.5" r="2.4" fill="#d4a94d"/>
+</svg>"""
 
 
 def _parse_csv_list(value: object) -> tuple[str, ...]:
@@ -58,6 +72,127 @@ def _text(value: object) -> str:
     if isinstance(value, str):
         return value.strip()
     return ""
+
+
+def _custom_briefing_inputs_provided(
+    usd_jpy: float | None,
+    market_change_pct: float | None,
+    watchlist_symbols: str | None,
+    watchlist_symbol: str | None,
+) -> bool:
+    return any(
+        item is not None
+        for item in (usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol)
+    )
+
+
+def _load_live_snapshot() -> dict[str, object] | None:
+    snapshot = getattr(app.state, "live_market_snapshot", None)
+    if not isinstance(snapshot, Mapping):
+        return None
+    return dict(snapshot)
+
+
+def _store_live_briefing(snapshot: dict[str, object]) -> None:
+    app.state.live_market_snapshot = snapshot
+    app.state.live_market_updated_at = snapshot.get("refreshed_at")
+    app.state.live_market_refresh_status = snapshot.get("refresh_status", {})
+
+
+def _normalize_refresh_interval_seconds(value: object | None) -> int | None:
+    if value is None:
+        return None
+    try:
+        interval = int(value)
+    except Exception:
+        return None
+    if interval < 1:
+        return None
+    return interval
+
+
+def _live_refresh_interval_seconds() -> int:
+    current = getattr(app.state, "live_market_refresh_interval_seconds", None)
+    interval = _normalize_refresh_interval_seconds(current)
+    if interval is not None:
+        return interval
+    interval = live_refresh_interval_seconds()
+    app.state.live_market_refresh_interval_seconds = interval
+    return interval
+
+
+def _set_live_refresh_interval_seconds(value: object | None) -> int | None:
+    interval = _normalize_refresh_interval_seconds(value)
+    if interval is None:
+        return None
+    app.state.live_market_refresh_interval_seconds = interval
+    refresh_status = getattr(app.state, "live_market_refresh_status", {})
+    if isinstance(refresh_status, Mapping):
+        updated_status = dict(refresh_status)
+        updated_status["interval_seconds"] = interval
+        app.state.live_market_refresh_status = updated_status
+    return interval
+
+
+def _refresh_live_snapshot(interval: str = DEFAULT_BRIEFING_INTERVAL) -> dict[str, object]:
+    snapshot = build_live_snapshot(
+        interval,
+        refresh_interval_seconds=_live_refresh_interval_seconds(),
+    )
+    _store_live_briefing(snapshot)
+    return snapshot
+
+
+def _build_briefing(
+    usd_jpy: float | None,
+    market_change_pct: float | None,
+    watchlist_symbols: str | None,
+    watchlist_symbol: str | None,
+    interval: str,
+) -> tuple[dict[str, object], dict[str, object]]:
+    if not _custom_briefing_inputs_provided(
+        usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol
+    ) and interval == DEFAULT_BRIEFING_INTERVAL:
+        cached_snapshot = _load_live_snapshot()
+        if cached_snapshot is not None:
+            briefing = cached_snapshot.get("briefing")
+            source = cached_snapshot.get("source")
+            if isinstance(briefing, Mapping):
+                return dict(briefing), dict(source) if isinstance(source, Mapping) else {}
+
+    source = collect_briefing_source(
+        usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval=interval
+    ) or {}
+    briefing = compose_briefing(source)
+    if isinstance(briefing, Mapping):
+        briefing = dict(briefing)
+    else:
+        briefing = {"briefing": briefing}
+
+    attach_live_refresh_metadata(
+        briefing,
+        source,
+        briefing_interval=interval,
+        refresh_interval_seconds=_live_refresh_interval_seconds(),
+        refreshed_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    if (
+        not _custom_briefing_inputs_provided(
+            usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol
+        )
+        and interval == DEFAULT_BRIEFING_INTERVAL
+    ):
+        _store_live_briefing(
+        {
+            "briefing": briefing,
+            "source": source,
+            "refreshed_at": briefing.get("market_refresh", {}).get("refreshed_at"),
+            "refresh_status": briefing.get("market_refresh", {}),
+        }
+        )
+
+    return briefing, source
 
 
 def _run_validation_report(payload: dict[str, object]):
@@ -130,6 +265,60 @@ def _run_validation_report(payload: dict[str, object]):
     return result
 
 
+async def _startup_live_refresh() -> None:
+    app.state.live_market_snapshot = None
+    app.state.live_market_updated_at = None
+    app.state.live_market_refresh_status = {"enabled": live_refresh_enabled(), "status": "idle"}
+    app.state.live_market_refresh_interval_seconds = live_refresh_interval_seconds()
+
+    if not live_refresh_enabled():
+        return
+
+    try:
+        snapshot = await asyncio.to_thread(
+            build_live_snapshot,
+            DEFAULT_BRIEFING_INTERVAL,
+            refresh_interval_seconds=_live_refresh_interval_seconds(),
+        )
+        _store_live_briefing(snapshot)
+    except Exception as exc:  # pragma: no cover - defensive logging
+        logger.warning("Failed to build initial live market snapshot: %s", exc)
+
+    app.state.live_market_refresh_stop = asyncio.Event()
+    app.state.live_market_refresh_task = asyncio.create_task(
+        run_live_refresh_loop(
+            _store_live_briefing,
+            interval_seconds_provider=_live_refresh_interval_seconds,
+            briefing_interval=DEFAULT_BRIEFING_INTERVAL,
+            stop_event=app.state.live_market_refresh_stop,
+        )
+    )
+
+
+async def _shutdown_live_refresh() -> None:
+    stop_event = getattr(app.state, "live_market_refresh_stop", None)
+    if isinstance(stop_event, asyncio.Event):
+        stop_event.set()
+
+    task = getattr(app.state, "live_market_refresh_task", None)
+    if task is not None:
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    await _startup_live_refresh()
+    try:
+        yield
+    finally:
+        await _shutdown_live_refresh()
+
+
+app = FastAPI(title="AlphaOS", lifespan=lifespan)
+
+
 @app.get("/briefing")
 def get_briefing(
     usd_jpy: float | None = Query(default=None, description="USD/JPY rate"),
@@ -143,11 +332,27 @@ def get_briefing(
         default=None, description="Single watchlist symbol override"
     ),
     interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
+    refresh_interval_seconds: int | None = Query(
+        default=None, ge=1, le=86400, description="Auto refresh interval in seconds"
+    ),
 ):
-    source = collect_briefing_source(
-        usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval=interval
-    )
-    briefing = compose_briefing(source)
+    if refresh_interval_seconds is not None:
+        _set_live_refresh_interval_seconds(refresh_interval_seconds)
+
+    if (
+        refresh_interval_seconds is not None
+        and not _custom_briefing_inputs_provided(
+            usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol
+        )
+        and interval == DEFAULT_BRIEFING_INTERVAL
+    ):
+        snapshot = _refresh_live_snapshot(interval)
+        briefing = snapshot["briefing"]
+        source = snapshot["source"]
+    else:
+        briefing, source = _build_briefing(
+            usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval
+        )
     try:
         record_briefing_snapshot(briefing, source)
     except Exception as exc:
@@ -176,16 +381,48 @@ def get_homepage(
         default=None, description="Single watchlist symbol override"
     ),
     interval: str = Query(default="1d", description="Data interval such as 1d or 1m"),
+    refresh_interval_seconds: int | None = Query(
+        default=None, ge=1, le=86400, description="Auto refresh interval in seconds"
+    ),
 ):
-    source = collect_briefing_source(
-        usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval=interval
+    if refresh_interval_seconds is not None:
+        _set_live_refresh_interval_seconds(refresh_interval_seconds)
+
+    if (
+        refresh_interval_seconds is not None
+        and not _custom_briefing_inputs_provided(
+            usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol
+        )
+        and interval == DEFAULT_BRIEFING_INTERVAL
+    ):
+        snapshot = _refresh_live_snapshot(interval)
+        briefing = snapshot["briefing"]
+    else:
+        briefing, _source = _build_briefing(
+            usd_jpy, market_change_pct, watchlist_symbols, watchlist_symbol, interval
+        )
+
+    briefing = dict(briefing)
+    candidate_pool = evaluate_candidate_pool(briefing, horizon="swing", limit=1)
+    briefing["candidate_preview"] = (
+        candidate_pool["candidates"][0] if candidate_pool["candidates"] else None
     )
-    briefing = compose_briefing(source)
+    briefing["candidate_preview_summary"] = candidate_pool["summary"]
+    briefing["candidate_preview_message"] = (
+        candidate_pool["candidates"][0]["candidate_reason"]
+        if candidate_pool["candidates"]
+        else "No ranked candidate is available yet."
+    )
     try:
         record_news_snapshot(briefing.get("news_item"), recorded_at=datetime.now(timezone.utc))
     except Exception as exc:
         logger.warning("Failed to record news snapshot: %s", exc)
     return render_homepage(briefing)
+
+
+@app.get("/favicon.ico")
+def get_favicon() -> Response:
+    return Response(content=_FAVICON_SVG, media_type="image/svg+xml")
 
 
 @app.get("/history")
@@ -341,6 +578,7 @@ def _build_candidate_report(
     )
     personalized = personalize_candidates(candidates, profile)
     strategy_mode = "daytrade" if horizon.strip().lower() == "daytrade" else "swing"
+    sector_rotation_summary = _sector_rotation_summary(briefing, personalized["candidates"])
     graph_nodes = candidate_graph.get("nodes", [])
     graph_edges = candidate_graph.get("edges", [])
     return {
@@ -362,6 +600,7 @@ def _build_candidate_report(
             if isinstance(candidate_graph.get("scenario_report"), dict)
             else 0,
         },
+        "sector_rotation_summary": sector_rotation_summary,
         "personal_profile": personalized["profile"],
         "personal_notes": personalized["notes"],
         "candidates": personalized["candidates"],
@@ -370,6 +609,44 @@ def _build_candidate_report(
         "top_candidate": personalized["candidates"][0] if personalized["candidates"] else None,
         "briefing_id": briefing.get("briefing_id"),
     }
+
+
+def _sector_rotation_summary(
+    briefing: Mapping[str, object], candidates: list[Mapping[str, object]]
+) -> list[str]:
+    summary: list[str] = []
+    rotation = briefing.get("sector_rotation")
+    if isinstance(rotation, Mapping):
+        for sector, strength in rotation.items():
+            sector_text = _text(sector)
+            strength_text = _text(strength)
+            if sector_text:
+                summary.append(f"{sector_text}: {strength_text or 'unrated'}")
+    elif isinstance(rotation, list):
+        for item in rotation:
+            if not isinstance(item, Mapping):
+                continue
+            sector_text = _text(item.get("sector")) or _text(item.get("name"))
+            if not sector_text:
+                continue
+            strength_text = _text(item.get("strength")) or _text(item.get("state"))
+            summary.append(f"{sector_text}: {strength_text or 'unrated'}")
+
+    top_candidate = candidates[0] if candidates else None
+    if isinstance(top_candidate, Mapping):
+        sector = _text(top_candidate.get("sector"))
+        if sector:
+            strength = _text(top_candidate.get("sector_strength"))
+            note = f"Top candidate sector: {sector}"
+            if strength:
+                note = f"{note} ({strength})"
+            summary.append(note)
+
+    unique: list[str] = []
+    for item in summary:
+        if item not in unique:
+            unique.append(item)
+    return unique[:4]
 
 
 @app.get("/candidates")

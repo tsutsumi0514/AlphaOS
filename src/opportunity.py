@@ -173,7 +173,7 @@ def _build_candidate(
     note = _candidate_note(candidate)
     if note is not None:
         candidate["note"] = note
-    candidate["candidate_reason"] = candidate["entry_reason"]
+    candidate["candidate_reason"] = _candidate_reason(candidate)
     return candidate
 
 
@@ -189,13 +189,15 @@ def _should_exclude(candidate: OpportunityCandidate) -> bool:
         return True
     if score < 0.42:
         return True
-    if confidence == "low" and score < 0.6:
+    if evidence_count <= 1 and confidence != "high" and score < 0.58:
         return True
-    if status == "avoid" and score < 0.58:
+    if confidence == "low" and score < 0.62:
         return True
-    if horizon == "daytrade" and liquidity in {"thin", "unavailable"} and score < 0.72:
+    if status == "avoid" and score < 0.62:
         return True
-    if liquidity in {"thin", "unavailable"} and confidence == "low":
+    if liquidity in {"thin", "unavailable"} and confidence == "low" and score < 0.7:
+        return True
+    if horizon == "daytrade" and liquidity in {"thin", "unavailable"} and score < 0.76:
         return True
     return False
 
@@ -219,6 +221,8 @@ def _exclusion_tags(candidate: OpportunityCandidate) -> list[str]:
     evidence_count = len(candidate["evidence"])
     if evidence_count == 0:
         tags.append("no_evidence")
+    if evidence_count <= 1:
+        tags.append("low_evidence")
     if candidate["score"] < 0.42:
         tags.append("low_score")
     if candidate["confidence"] == "low":
@@ -631,6 +635,25 @@ def _candidate_note(candidate: OpportunityCandidate) -> str | None:
     if candidate["entry_timing"] == "wait":
         return "Timing is not yet favorable."
     return None
+
+
+def _candidate_reason(candidate: OpportunityCandidate) -> str:
+    symbol = _text(candidate.get("symbol")) or "Candidate"
+    confidence = _text(candidate.get("confidence"))
+    liquidity = _text(candidate.get("liquidity"))
+    entry_timing = _text(candidate.get("entry_timing")).replace("_", " ")
+
+    if entry_timing == "buy now":
+        if liquidity == "high":
+            return f"{symbol}: strong setup, high liquidity, buy now."
+        return f"{symbol}: strong setup, buy now."
+    if candidate.get("status") == "avoid":
+        return f"{symbol}: risk outweighs evidence."
+    if confidence == "low":
+        return f"{symbol}: watch only for now."
+    if entry_timing == "wait":
+        return f"{symbol}: valid setup, wait for timing."
+    return f"{symbol}: candidate remains on watch."
 
 
 def _base_score(status: Any) -> float:

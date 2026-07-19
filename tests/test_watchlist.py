@@ -26,6 +26,8 @@ def test_fetch_watchlist_status_returns_multiple_symbols(monkeypatch):
                 "symbol": symbol,
                 "price": 100.0,
                 "change_pct": 1.0,
+                "volume": 250000,
+                "avg_volume": 225000,
                 "status": "steady",
             }
         ]
@@ -36,4 +38,5 @@ def test_fetch_watchlist_status_returns_multiple_symbols(monkeypatch):
     statuses = fetch_watchlist_status(["7203.T", "6758.T"], interval="1m")
 
     assert [item["symbol"] for item in statuses] == ["7203.T", "6758.T"]
+    assert all("volume" in item for item in statuses)
     assert seen_keys == ["watchlist.1m.7203.T", "watchlist.1m.6758.T"]

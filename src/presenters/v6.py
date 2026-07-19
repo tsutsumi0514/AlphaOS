@@ -39,16 +39,16 @@ def _render_what_if_page(report: Mapping[str, Any]) -> str:
                 "<article class='card'>"
                 f"<h2>{escape(_text(scenario.get('name'), 'scenario'))}</h2>"
                 f"<p>{escape(_text(scenario.get('description'), ''))}</p>"
-                f"<p><strong>Market</strong> {escape(_text(scenario.get('market_bias'), 'mixed'))}</p>"
-                f"<p><strong>FX</strong> {escape(_text(scenario.get('fx_bias'), 'neutral'))}</p>"
-                f"<p><strong>Risk</strong> {escape(_text(scenario.get('risk_bias'), 'moderate'))}</p>"
-                f"<p><strong>Timing</strong> {escape(', '.join(_list_items(scenario.get('affected_horizons'))))}</p>"
+                f"<p><strong>市場</strong> {escape(_text(scenario.get('market_bias'), 'mixed'))}</p>"
+                f"<p><strong>為替</strong> {escape(_text(scenario.get('fx_bias'), 'neutral'))}</p>"
+                f"<p><strong>リスク</strong> {escape(_text(scenario.get('risk_bias'), 'moderate'))}</p>"
+                f"<p><strong>対象期間</strong> {escape(', '.join(_list_items(scenario.get('affected_horizons'))))}</p>"
                 f"<ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(scenario.get('rationale'))[:3])}</ul>"
                 "</article>"
             )
     if not cards:
-        cards.append("<p class='empty'>No what-if scenarios yet.</p>")
-    return _wrap_page("AlphaOS What-if Simulator", "".join(cards))
+        cards.append("<p class='empty'>仮説シナリオはまだありません。</p>")
+    return _wrap_page("AlphaOS 仮説シミュレーター", "".join(cards))
 
 
 def _render_knowledge_graph_page(graph: Mapping[str, Any]) -> str:
@@ -76,14 +76,14 @@ def _render_knowledge_graph_page(graph: Mapping[str, Any]) -> str:
                 f"({escape(_text(edge.get('label'), ''))}, {escape(_text(edge.get('strength'), ''))})</li>"
             )
     if not node_cards:
-        node_cards.append("<p class='empty'>No graph data yet.</p>")
+        node_cards.append("<p class='empty'>グラフデータはまだありません。</p>")
     if not edge_lines:
-        edge_lines.append("<li class='empty'>No edges yet.</li>")
+        edge_lines.append("<li class='empty'>まだエッジはありません。</li>")
     body = (
         "<div class='grid'>" + "".join(node_cards) + "</div>"
-        "<section class='panel'><h2>Edges</h2><ul>" + "".join(edge_lines) + "</ul></section>"
+        "<section class='panel'><h2>関係線</h2><ul>" + "".join(edge_lines) + "</ul></section>"
     )
-    return _wrap_page("AlphaOS Knowledge Graph", body)
+    return _wrap_page("AlphaOS 知識グラフ", body)
 
 
 def _render_replay_compare_page(compare: Mapping[str, Any]) -> str:
@@ -110,17 +110,17 @@ def _render_replay_compare_page(compare: Mapping[str, Any]) -> str:
                 "</li>"
             )
     if not match_lines:
-        match_lines.append("<li class='empty'>No similar cases yet.</li>")
+        match_lines.append("<li class='empty'>類似事例はまだありません。</li>")
     body = (
         "<div class='grid'>"
-        f"<section class='panel'><h2>Current</h2><ul>{current_line}</ul></section>"
-        f"<section class='panel'><h2>Latest Replay</h2><ul>{replay_line}</ul>{replay_summary_block}</section>"
+        f"<section class='panel'><h2>現在</h2><ul>{current_line}</ul></section>"
+        f"<section class='panel'><h2>最新Replay</h2><ul>{replay_line}</ul>{replay_summary_block}</section>"
         "</div>"
-        "<section class='panel'><h2>Similar Cases</h2><ul>"
+        "<section class='panel'><h2>類似事例</h2><ul>"
         + "".join(match_lines)
         + "</ul></section>"
     )
-    return _wrap_page("AlphaOS Replay Comparison", body)
+    return _wrap_page("AlphaOS Replay 比較", body)
 
 
 def _render_validation_page(report: Mapping[str, Any]) -> str:
@@ -135,17 +135,17 @@ def _render_validation_page(report: Mapping[str, Any]) -> str:
             cards.append(
                 "<article class='card'>"
                 f"<h2>{escape(str(horizon))}</h2>"
-                f"<p><strong>Trades</strong> {escape(str(summary.get('total', 0)))}</p>"
-                f"<p><strong>Win rate</strong> {escape(_percent(summary.get('win_rate')))}</p>"
-                f"<p><strong>Total return</strong> {escape(_percent(summary.get('total_return_pct')))}</p>"
-                f"<p><strong>Profit factor</strong> {escape(_number(summary.get('profit_factor')))}</p>"
-                f"<p><strong>Sharpe</strong> {escape(_number(summary.get('sharpe')))}</p>"
-                f"<p><strong>Max DD</strong> {escape(_percent(summary.get('max_drawdown_pct')))}</p>"
-                f"<p><strong>Baseline return</strong> {escape(_percent(baseline.get('total_return_pct')))}</p>"
+                f"<p><strong>取引数</strong> {escape(str(summary.get('total', 0)))}</p>"
+                f"<p><strong>勝率</strong> {escape(_percent(summary.get('win_rate')))}</p>"
+                f"<p><strong>総リターン</strong> {escape(_percent(summary.get('total_return_pct')))}</p>"
+                f"<p><strong>利益係数</strong> {escape(_number(summary.get('profit_factor')))}</p>"
+                f"<p><strong>シャープレシオ</strong> {escape(_number(summary.get('sharpe')))}</p>"
+                f"<p><strong>最大DD</strong> {escape(_percent(summary.get('max_drawdown_pct')))}</p>"
+                f"<p><strong>ベースライン収益率</strong> {escape(_percent(baseline.get('total_return_pct')))}</p>"
                 "</article>"
             )
     if not cards:
-        cards.append("<p class='empty'>No validation data yet.</p>")
+        cards.append("<p class='empty'>検証データはまだありません。</p>")
 
     walk_forward = report.get("walk_forward", {})
     wf_cards = []
@@ -159,22 +159,22 @@ def _render_validation_page(report: Mapping[str, Any]) -> str:
                 wf_cards.append(
                     "<li>"
                     f"<strong>{escape(str(horizon))}</strong>: "
-                    f"trades {escape(str(summary.get('total', 0)))} / "
-                    f"win {escape(_percent(summary.get('win_rate')))} / "
-                    f"return {escape(_percent(summary.get('total_return_pct')))}"
+                    f"取引数 {escape(str(summary.get('total', 0)))} / "
+                    f"勝率 {escape(_percent(summary.get('win_rate')))} / "
+                    f"総リターン {escape(_percent(summary.get('total_return_pct')))}"
                     "</li>"
                 )
     if not wf_cards:
-        wf_cards.append("<li class='empty'>No walk-forward data yet.</li>")
+        wf_cards.append("<li class='empty'>ウォークフォワードデータはまだありません。</li>")
 
     body = (
-        f"<p class='subhead'>Interval: {escape(_text(report.get('interval'), '1d'))}. "
-        f"Cost: {escape(_percent(report.get('transaction_cost_pct')))}. "
-        f"Sample size: {escape(str(report.get('sample_size', 0)))}.</p>"
+        f"<p class='subhead'>間隔: {escape(_text(report.get('interval'), '1d'))}. "
+        f"コスト: {escape(_percent(report.get('transaction_cost_pct')))}. "
+        f"サンプル数: {escape(str(report.get('sample_size', 0)))}.</p>"
         "<div class='grid'>" + "".join(cards) + "</div>"
-        "<section class='panel'><h2>Walk-forward</h2><ul>" + "".join(wf_cards) + "</ul></section>"
+        "<section class='panel'><h2>ウォークフォワード</h2><ul>" + "".join(wf_cards) + "</ul></section>"
     )
-    return _wrap_page("AlphaOS Opportunity Validation", body)
+    return _wrap_page("AlphaOS 候補検証", body)
 
 
 def _render_candidates_page(report: Mapping[str, Any]) -> str:
@@ -187,6 +187,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     learning_summary = report.get("learning_summary", {})
     candidate_learning_profile = report.get("candidate_learning_profile", {})
     candidate_graph = report.get("candidate_graph", {})
+    sector_rotation_summary = report.get("sector_rotation_summary", [])
     data_health = report.get("data_health", {})
     data_warnings = report.get("data_warnings", [])
     cards = []
@@ -201,33 +202,33 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
                     f"{escape(_text(item.get('value'), ''))}</li>"
                 )
             if not evidence_lines:
-                evidence_lines.append("<li class='empty'>No evidence yet.</li>")
+                evidence_lines.append("<li class='empty'>まだ根拠はありません。</li>")
             cards.append(
                 "<article class='card'>"
                 f"<h2>#{escape(str(candidate.get('rank', '')))} {escape(_text(candidate.get('symbol'), 'candidate'))}</h2>"
-                f"<p><strong>Name</strong> {escape(_text(candidate.get('name'), ''))}</p>"
-                f"<p><strong>Horizon</strong> {escape(_text(candidate.get('horizon'), ''))}</p>"
-                f"<p><strong>Score</strong> {escape(_number(candidate.get('score')))}</p>"
-                f"<p><strong>Personalized score</strong> {escape(_number(candidate.get('personalized_score')))}</p>"
-                f"<p><strong>Confidence</strong> {escape(_text(candidate.get('confidence'), ''))}</p>"
-                f"<p><strong>Entry timing</strong> {escape(_text(candidate.get('entry_timing'), ''))}</p>"
-                f"<p><strong>Entry detail</strong> {escape(_text(candidate.get('entry_detail'), ''))}</p>"
-                f"<p><strong>Candidate reason</strong> {escape(_text(candidate.get('candidate_reason'), ''))}</p>"
-                f"<p><strong>Entry reason</strong> {escape(_text(candidate.get('entry_reason'), ''))}</p>"
-                f"<p><strong>Status</strong> {escape(_text(candidate.get('status'), ''))}</p>"
-                f"<p><strong>Liquidity</strong> {escape(_text(candidate.get('liquidity'), ''))}</p>"
-                f"<p><strong>Note</strong> {escape(_text(candidate.get('note'), ''))}</p>"
-                f"<p><strong>Sector</strong> {escape(_text(candidate.get('sector'), ''))}</p>"
-                f"<p><strong>Sector strength</strong> {escape(_text(candidate.get('sector_strength'), ''))}</p>"
-                f"<div><strong>Personalization notes</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('personalization_notes'))[:4])}</ul></div>"
-                f"<div><strong>Reasons</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('reasons'))[:4])}</ul></div>"
-                f"<div><strong>Risk alerts</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('risk_alerts'))[:4])}</ul></div>"
-                f"<div><strong>Counter evidence</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('counter_evidence'))[:4])}</ul></div>"
-                f"<div><strong>Evidence</strong><ul>{''.join(evidence_lines)}</ul></div>"
+                f"<p><strong>銘柄名</strong> {escape(_text(candidate.get('name'), ''))}</p>"
+                f"<p><strong>期間</strong> {escape(_text(candidate.get('horizon'), ''))}</p>"
+                f"<p><strong>スコア</strong> {escape(_number(candidate.get('score')))}</p>"
+                f"<p><strong>個人最適化スコア</strong> {escape(_number(candidate.get('personalized_score')))}</p>"
+                f"<p><strong>確信度</strong> {escape(_text(candidate.get('confidence'), ''))}</p>"
+                f"<p><strong>エントリータイミング</strong> {escape(_text(candidate.get('entry_timing'), ''))}</p>"
+                f"<p><strong>エントリー詳細</strong> {escape(_text(candidate.get('entry_detail'), ''))}</p>"
+                f"<p><strong>候補理由</strong> {escape(_text(candidate.get('candidate_reason'), ''))}</p>"
+                f"<p><strong>エントリー理由</strong> {escape(_text(candidate.get('entry_reason'), ''))}</p>"
+                f"<p><strong>状態</strong> {escape(_text(candidate.get('status'), ''))}</p>"
+                f"<p><strong>流動性</strong> {escape(_text(candidate.get('liquidity'), ''))}</p>"
+                f"<p><strong>注記</strong> {escape(_text(candidate.get('note'), ''))}</p>"
+                f"<p><strong>業種</strong> {escape(_text(candidate.get('sector'), ''))}</p>"
+                f"<p><strong>業種強度</strong> {escape(_text(candidate.get('sector_strength'), ''))}</p>"
+                f"<div><strong>個別条件メモ</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('personalization_notes'))[:4])}</ul></div>"
+                f"<div><strong>理由</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('reasons'))[:4])}</ul></div>"
+                f"<div><strong>リスク警告</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('risk_alerts'))[:4])}</ul></div>"
+                f"<div><strong>反証</strong><ul>{''.join(f'<li>{escape(item)}</li>' for item in _list_items(candidate.get('counter_evidence'))[:4])}</ul></div>"
+                f"<div><strong>根拠</strong><ul>{''.join(evidence_lines)}</ul></div>"
                 "</article>"
             )
     if not cards:
-        cards.append("<p class='empty'>No candidates yet.</p>")
+        cards.append("<p class='empty'>候補はまだありません。</p>")
 
     excluded_lines = []
     if isinstance(excluded, list):
@@ -246,7 +247,7 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
                 "</li>"
             )
     if not excluded_lines:
-        excluded_lines.append("<li class='empty'>No excluded candidates yet.</li>")
+        excluded_lines.append("<li class='empty'>除外候補はまだありません。</li>")
 
     summary = report.get("opportunity_summary", {})
     summary_line = _render_kv_list(summary)
@@ -256,34 +257,36 @@ def _render_candidates_page(report: Mapping[str, Any]) -> str:
     similar_cases_block = _render_similar_cases_block(similar_cases)
     learning_block = _render_learning_block(learning_summary, candidate_learning_profile)
     graph_block = _render_graph_block(candidate_graph)
+    sector_block = _render_sector_rotation_block(sector_rotation_summary)
     data_block = _render_data_block(data_health, data_warnings)
     profile_line = _render_personal_profile_list(personal_profile)
     notes_line = "".join(f"<li>{escape(item)}</li>" for item in _list_items(personal_notes))
     if not notes_line:
-        notes_line = "<li class='empty'>No personal notes yet.</li>"
+        notes_line = "<li class='empty'>個別条件メモはまだありません。</li>"
     body = (
-        f"<p class='subhead'>Horizon: {escape(_text(report.get('horizon'), 'swing'))}. "
-        f"Count: {escape(str(report.get('count', 0)))}. "
-        f"Rejected: {escape(str(report.get('rejected_count', 0)))}. "
-        f"Strategy: {escape(_text(report.get('strategy_mode'), _text(report.get('horizon'), 'swing')))}. "
-        f"Mode: {escape(_text(report.get('automation_mode'), 'advisory_only'))}.</p>"
+        f"<p class='subhead'>期間: {escape(_text(report.get('horizon'), 'swing'))}. "
+        f"件数: {escape(str(report.get('count', 0)))}. "
+        f"除外: {escape(str(report.get('rejected_count', 0)))}. "
+        f"戦略: {escape(_text(report.get('strategy_mode'), _text(report.get('horizon'), 'swing')))}. "
+        f"モード: {escape(_text(report.get('automation_mode'), 'advisory_only'))}.</p>"
         f"{top_candidate_block}"
         f"{data_block}"
         f"{learning_block}"
         f"{graph_block}"
+        f"{sector_block}"
         f"{similar_cases_block}"
-        f"<section class='panel'><h2>Personal Context</h2><ul>{profile_line}</ul><ul>{notes_line}</ul></section>"
-        f"<section class='panel'><h2>Opportunity Summary</h2><ul>{summary_line}</ul></section>"
-        f"<section class='panel'><h2>Exclusion Breakdown</h2><ul>{breakdown_line}</ul></section>"
+        f"<section class='panel'><h2>個人条件</h2><ul>{profile_line}</ul><ul>{notes_line}</ul></section>"
+        f"<section class='panel'><h2>候補サマリ</h2><ul>{summary_line}</ul></section>"
+        f"<section class='panel'><h2>除外内訳</h2><ul>{breakdown_line}</ul></section>"
         "<div class='grid'>" + "".join(cards) + "</div>"
-        "<section class='panel'><h2>Excluded Candidates</h2><ul>" + "".join(excluded_lines) + "</ul></section>"
+        "<section class='panel'><h2>除外候補</h2><ul>" + "".join(excluded_lines) + "</ul></section>"
     )
-    return _wrap_page("AlphaOS Candidates", body)
+    return _wrap_page("AlphaOS 候補銘柄", body)
 
 
 def _wrap_page(title: str, body: str) -> str:
     return f"""<!doctype html>
-<html lang="en">
+<html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -293,6 +296,8 @@ def _wrap_page(title: str, body: str) -> str:
     main {{ max-width: 1100px; margin: 0 auto; padding: 28px 18px 40px; }}
     .shell {{ background: white; border: 1px solid rgba(32,38,46,.12); border-radius: 24px; box-shadow: 0 18px 50px rgba(32,38,46,.08); padding: 24px; }}
     h1 {{ margin: 0 0 18px; font-size: clamp(28px, 4vw, 42px); }}
+    .topbar {{ display: flex; justify-content: space-between; gap: 12px; align-items: center; margin: 0 0 18px; flex-wrap: wrap; }}
+    .home-link {{ display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 999px; border: 1px solid rgba(32,38,46,.12); background: #fff; color: #20262e; text-decoration: none; font-weight: 700; }}
     .grid {{ display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }}
     .card, .panel {{ border: 1px solid rgba(32,38,46,.12); border-radius: 18px; padding: 16px; background: #fffdf8; }}
     h2 {{ margin: 0 0 10px; font-size: 16px; color: #845a00; }}
@@ -303,7 +308,10 @@ def _wrap_page(title: str, body: str) -> str:
 <body>
   <main>
     <div class="shell">
-      <h1>{escape(title)}</h1>
+      <div class="topbar">
+        <h1>{escape(title)}</h1>
+        <a class="home-link" href="/">ホームへ戻る</a>
+      </div>
       {body}
     </div>
   </main>
@@ -313,7 +321,7 @@ def _wrap_page(title: str, body: str) -> str:
 
 def _render_kv_list(value: Mapping[str, Any] | Any) -> str:
     if not isinstance(value, Mapping):
-        return "<li class='empty'>None</li>"
+        return "<li class='empty'>なし</li>"
     items: list[str] = []
     for key in ("market_state", "fx_state", "confidence", "horizon", "win_rate", "profit_factor", "sharpe", "sample_size", "accuracy", "weighted_accuracy"):
         item = value.get(key)
@@ -326,7 +334,7 @@ def _render_kv_list(value: Mapping[str, Any] | Any) -> str:
             for key, item in detail_breakdown.items():
                 items.append(f"<li><strong>{escape(str(key))}</strong>: {escape(str(item))}</li>")
     if not items:
-        items.append("<li class='empty'>None</li>")
+        items.append("<li class='empty'>なし</li>")
     return "".join(items)
 
 
@@ -359,7 +367,7 @@ def _render_replay_summary_list(value: Mapping[str, Any] | Any) -> str:
 
 def _render_personal_profile_list(value: Mapping[str, Any] | Any) -> str:
     if not isinstance(value, Mapping):
-        return "<li class='empty'>None</li>"
+        return "<li class='empty'>なし</li>"
     items: list[str] = []
     for key in ("holdings", "investment_period", "risk_tolerance", "style", "interested_markets"):
         item = value.get(key)
@@ -369,19 +377,19 @@ def _render_personal_profile_list(value: Mapping[str, Any] | Any) -> str:
             item = ", ".join(str(entry) for entry in item)
         items.append(f"<li><strong>{escape(key)}</strong>: {escape(str(item))}</li>")
     if not items:
-        items.append("<li class='empty'>None</li>")
+        items.append("<li class='empty'>なし</li>")
     return "".join(items)
 
 
 def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
     if not isinstance(value, Mapping):
-        return "<section class='panel'><h2>Top Candidate</h2><p class='empty'>No top candidate yet.</p></section>"
+        return "<section class='panel'><h2>最有力候補</h2><p class='empty'>まだ最有力候補はありません。</p></section>"
 
     counter_evidence = "".join(
         f"<li>{escape(item)}</li>" for item in _list_items(value.get("counter_evidence"))[:4]
     )
     if not counter_evidence:
-        counter_evidence = "<li class='empty'>No counter evidence yet.</li>"
+        counter_evidence = "<li class='empty'>まだ反証はありません。</li>"
 
     evidence_lines = []
     for item in _mapping_items(value.get("evidence"))[:4]:
@@ -389,25 +397,25 @@ def _render_top_candidate_block(value: Mapping[str, Any] | Any) -> str:
             f"<li>{escape(_text(item.get('label'), 'evidence'))}: {escape(_text(item.get('value'), ''))}</li>"
         )
     if not evidence_lines:
-        evidence_lines.append("<li class='empty'>No evidence yet.</li>")
+        evidence_lines.append("<li class='empty'>まだ根拠はありません。</li>")
 
     why_now = _build_why_now_line(value)
 
     return (
         "<section class='panel'>"
-        "<h2>Top Candidate</h2>"
-        "<p><strong>Mode</strong> advisory_only</p>"
-        f"<p><strong>Strategy</strong> {escape(_text(value.get('horizon'), 'swing'))}</p>"
+        "<h2>最有力候補</h2>"
+        "<p><strong>モード</strong> advisory_only</p>"
+        f"<p><strong>戦略</strong> {escape(_text(value.get('horizon'), 'swing'))}</p>"
         f"<p><strong>{escape(_text(value.get('symbol'), 'unknown'))}</strong> "
         f"{escape(_text(value.get('name'), ''))}</p>"
-        f"<p><strong>Why now</strong> {escape(why_now)}</p>"
-        f"<p><strong>Entry detail</strong> {escape(_text(value.get('entry_detail'), ''))}</p>"
-        f"<p><strong>Entry reason</strong> {escape(_text(value.get('entry_reason'), ''))}</p>"
-        f"<p><strong>Score</strong> {escape(_number(value.get('score')))}</p>"
-        f"<p><strong>Confidence</strong> {escape(_text(value.get('confidence'), ''))}</p>"
-        f"<p><strong>Liquidity</strong> {escape(_text(value.get('liquidity'), ''))}</p>"
-        f"<div><strong>Counter evidence</strong><ul>{counter_evidence}</ul></div>"
-        f"<div><strong>Evidence</strong><ul>{''.join(evidence_lines)}</ul></div>"
+        f"<p><strong>なぜ今か</strong> {escape(why_now)}</p>"
+        f"<p><strong>エントリー詳細</strong> {escape(_text(value.get('entry_detail'), ''))}</p>"
+        f"<p><strong>エントリー理由</strong> {escape(_text(value.get('entry_reason'), ''))}</p>"
+        f"<p><strong>スコア</strong> {escape(_number(value.get('score')))}</p>"
+        f"<p><strong>確信度</strong> {escape(_text(value.get('confidence'), ''))}</p>"
+        f"<p><strong>流動性</strong> {escape(_text(value.get('liquidity'), ''))}</p>"
+        f"<div><strong>反証</strong><ul>{counter_evidence}</ul></div>"
+        f"<div><strong>根拠</strong><ul>{''.join(evidence_lines)}</ul></div>"
         "</section>"
     )
 
@@ -445,13 +453,13 @@ def _render_learning_block(value: Mapping[str, Any] | Any, candidate_profile: Ma
     if notes:
         items.extend(f"<li>{escape(note)}</li>" for note in notes[:3])
     if not items:
-        items.append("<li class='empty'>No learning data yet.</li>")
-    return "<section class='panel'><h2>Learning</h2><ul>" + "".join(items) + "</ul></section>"
+        items.append("<li class='empty'>学習データはまだありません。</li>")
+    return "<section class='panel'><h2>学習</h2><ul>" + "".join(items) + "</ul></section>"
 
 
 def _render_data_block(data_health: Any, data_warnings: Any) -> str:
     if not isinstance(data_health, Mapping) and not _list_items(data_warnings):
-        return "<section class='panel'><h2>Data Quality</h2><p class='empty'>None</p></section>"
+        return "<section class='panel'><h2>データ品質</h2><p class='empty'>なし</p></section>"
 
     status = _text(data_health.get("status"), "ok") if isinstance(data_health, Mapping) else "ok"
     warnings = _list_items(data_warnings)
@@ -470,14 +478,14 @@ def _render_data_block(data_health: Any, data_warnings: Any) -> str:
         items.extend(f"<li>{escape(_text(warning, ''))}</li>" for warning in warnings[:4])
 
     if not items:
-        items.append("<li class='empty'>None</li>")
+        items.append("<li class='empty'>なし</li>")
 
     return "<section class='panel'><h2>Data Quality</h2><ul>" + "".join(items) + "</ul></section>"
 
 
 def _render_graph_block(value: Mapping[str, Any] | Any) -> str:
     if not isinstance(value, Mapping):
-        return "<section class='panel'><h2>Knowledge Graph</h2><p class='empty'>None</p></section>"
+        return "<section class='panel'><h2>知識グラフ</h2><p class='empty'>なし</p></section>"
 
     nodes = value.get("nodes", [])
     edges = value.get("edges", [])
@@ -514,14 +522,23 @@ def _render_graph_block(value: Mapping[str, Any] | Any) -> str:
                 items.append(f"<li><strong>Scenarios</strong>: {escape(scenario_names)}</li>")
 
     if not items:
-        items.append("<li class='empty'>No graph context yet.</li>")
+        items.append("<li class='empty'>グラフ文脈はまだありません。</li>")
 
-    return "<section class='panel'><h2>Knowledge Graph</h2><ul>" + "".join(items) + "</ul></section>"
+    return "<section class='panel'><h2>知識グラフ</h2><ul>" + "".join(items) + "</ul></section>"
+
+
+def _render_sector_rotation_block(value: Any) -> str:
+    items = _list_items(value)
+    if not items:
+        return "<section class='panel'><h2>業種ローテーション</h2><p class='empty'>なし</p></section>"
+    return "<section class='panel'><h2>業種ローテーション</h2><ul>" + "".join(
+        f"<li>{escape(item)}</li>" for item in items[:4]
+    ) + "</ul></section>"
 
 
 def _render_similar_cases_block(value: Any) -> str:
     if not isinstance(value, list):
-        return "<section class='panel'><h2>Similar Cases</h2><p class='empty'>No similar cases yet.</p></section>"
+        return "<section class='panel'><h2>類似事例</h2><p class='empty'>まだ類似事例はありません。</p></section>"
 
     lines = []
     for case in value[:5]:
@@ -537,9 +554,9 @@ def _render_similar_cases_block(value: Any) -> str:
             "</li>"
         )
     if not lines:
-        lines.append("<li class='empty'>No similar cases yet.</li>")
+        lines.append("<li class='empty'>まだ類似事例はありません。</li>")
 
-    return "<section class='panel'><h2>Similar Cases</h2><ul>" + "".join(lines) + "</ul></section>"
+    return "<section class='panel'><h2>類似事例</h2><ul>" + "".join(lines) + "</ul></section>"
 
 
 def _render_outcome_summary(value: Any) -> str:
@@ -563,7 +580,7 @@ def _build_why_now_line(value: Mapping[str, Any]) -> str:
     parts = [part for part in (candidate_reason, detail, reason) if part]
     if parts:
         return " / ".join(parts)
-    return "No short summary yet."
+        return "短い要約はまだありません。"
 
 
 def _mapping_items(value: Any) -> list[Mapping[str, Any]]:

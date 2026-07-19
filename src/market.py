@@ -18,11 +18,17 @@ def fetch_nikkei_change_pct(interval: str = "1d") -> float | None:
     Returns None when the change cannot be obtained.
     """
     interval = _normalize_interval(interval)
-    return get_cached_value(
-        f"{_NIKKEI_CHANGE_CACHE_KEY}.{interval}",
-        lambda interval=interval: _fetch_nikkei_change_pct_uncached(interval),
-        _NIKKEI_CHANGE_CACHE_TTL_SECONDS,
-    )
+    for candidate_interval in _interval_candidates(interval):
+        value = get_cached_value(
+            f"{_NIKKEI_CHANGE_CACHE_KEY}.{candidate_interval}",
+            lambda candidate_interval=candidate_interval: _fetch_nikkei_change_pct_uncached(
+                candidate_interval
+            ),
+            _NIKKEI_CHANGE_CACHE_TTL_SECONDS,
+        )
+        if value is not None:
+            return value
+    return None
 
 
 def _fetch_nikkei_change_pct_uncached(interval: str) -> float | None:
@@ -53,3 +59,9 @@ def _normalize_interval(interval: str | None) -> str:
         return "1d"
     text = interval.strip().lower()
     return text if text in _VALID_INTERVALS else "1d"
+
+
+def _interval_candidates(interval: str) -> tuple[str, ...]:
+    if interval == "1d":
+        return ("1d",)
+    return (interval, "1d")

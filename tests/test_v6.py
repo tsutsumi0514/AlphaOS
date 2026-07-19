@@ -26,7 +26,14 @@ def test_build_knowledge_graph_links_candidate_and_scenario():
         "risk_alerts": ["Market tone is calm."],
         "decision_ai": {"agent": "ChairmanAI", "reason": "Constructive consensus."},
         "watchlist_status": [
-            {"symbol": "7203.T", "name": "Toyota", "status": "strong", "change_pct": 2.1, "volume": 2_000_000}
+            {
+                "symbol": "7203.T",
+                "name": "Toyota",
+                "status": "strong",
+                "change_pct": 2.1,
+                "volume": 2_000_000,
+                "sector": "technology",
+            }
         ],
         "evidence": [{"source": "market", "label": "Nikkei", "value": 1.2}],
     }
@@ -36,7 +43,9 @@ def test_build_knowledge_graph_links_candidate_and_scenario():
     assert graph["nodes"]
     assert graph["edges"]
     assert graph["top_candidate"]["symbol"] == "7203.T"
+    assert graph["top_candidate"]["candidate_reason"].startswith("7203.T:")
     assert any(node["kind"] == "scenario" for node in graph["nodes"])
+    assert any(node["kind"] == "sector" for node in graph["nodes"])
 
 
 def test_personalize_candidates_filters_holdings_and_style():

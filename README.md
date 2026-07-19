@@ -37,17 +37,24 @@
 ## Run
 - Start the app:
   - `python -m src.main`
-- Open the web UI:
+- Open the top page:
   - `http://127.0.0.1:8000/`
-- Open the candidate UI:
+- The top page links to each home:
+  - 市場要約ホーム: `/briefing`
+  - 銘柄提案ホーム: `/candidates/view`
+  - デイトレホーム: `/daytrade-candidates/view`
+- Open the candidate UI directly:
   - `http://127.0.0.1:8000/candidates/view`
-- Open the daytrade candidate UI:
+- Open the daytrade candidate UI directly:
   - `http://127.0.0.1:8000/daytrade-candidates/view`
 - Use the JSON API:
   - `http://127.0.0.1:8000/briefing`
 - Use minute-granularity inputs when needed:
   - `http://127.0.0.1:8000/briefing?interval=1m`
 - Replay and validation endpoints also accept `interval=1m` for daytrade-oriented checks.
+- The app keeps the default market briefing auto-refreshed in the background while it is running.
+- The top page shows the latest refresh status so you can tell whether live updates are active.
+- Market/news collection now uses fallback queries and interval fallback to reduce empty snapshots.
 
 ## Test
 - Run tests:
@@ -63,6 +70,8 @@
 - `src/app.py`: market memory and similar-case search endpoints
 - `src/app.py`: what-if, knowledge graph, and replay comparison endpoints
 - `src/app.py`: interval-aware input collection for `1d` and `1m` views
+- `src/app.py`: background live market refresh for the default briefing view
+- `src/collectors/briefing_inputs.py`: richer collection diagnostics for watchlist breadth and news source
 - `src/simulation/replay.py`: interval-aware replay and walk-forward validation
 - `src/simulation/validation.py`: interval-aware candidate validation for daytrade, swing, and long horizons
 - `src/agents/contracts.py`: shared AgentDecision contract

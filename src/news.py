@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import timezone
 from html import unescape
 from email.utils import parsedate_to_datetime
@@ -12,18 +13,30 @@ from xml.etree import ElementTree
 from .cache import get_cached_value
 
 DEFAULT_NEWS_QUERY = "日経平均"
+DEFAULT_NEWS_QUERIES = ("日経平均", "日本株", "ドル円", "東京市場")
 _NEWS_CACHE_TTL_SECONDS = 300
 _NEWS_URL = "https://news.google.com/rss/search?q={query}&hl=ja&gl=JP&ceid=JP:ja"
 
 
-def fetch_latest_market_news(query: str = DEFAULT_NEWS_QUERY) -> dict[str, str] | None:
+def fetch_latest_market_news(
+    query: str | Sequence[str] = DEFAULT_NEWS_QUERY,
+) -> dict[str, str] | None:
     """Fetch a single market-related news item from Google News RSS."""
-    cache_key = f"news.{query}"
-    return get_cached_value(
-        cache_key,
-        lambda: _fetch_latest_market_news_uncached(query),
-        _NEWS_CACHE_TTL_SECONDS,
-    )
+    for candidate_query in _news_queries(query):
+        cache_key = f"news.{candidate_query}"
+        result = get_cached_value(
+            cache_key,
+            lambda candidate_query=candidate_query: _fetch_latest_market_news_uncached(
+                candidate_query
+            ),
+            _NEWS_CACHE_TTL_SECONDS,
+        )
+        if result is not None:
+            if isinstance(result, dict) and "query" not in result:
+                result = dict(result)
+                result["query"] = candidate_query
+            return result
+    return None
 
 
 def _fetch_latest_market_news_uncached(query: str) -> dict[str, str] | None:
@@ -67,6 +80,7 @@ def _fetch_latest_market_news_uncached(query: str) -> dict[str, str] | None:
         "source": source,
         "url": _find_text(item, "link"),
         "published_at": published_at,
+        "query": query,
     }
 
 
@@ -86,3 +100,25 @@ def _normalize_rss_datetime(value: str) -> str:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc).isoformat()
+
+
+def _news_queries(value: str | Sequence[str]) -> list[str]:
+    if isinstance(value, str):
+        queries = [value]
+    elif isinstance(value, Sequence):
+        queries = [item for item in value if isinstance(item, str)]
+    else:
+        queries = []
+
+    normalized: list[str] = []
+    for query in queries:
+        text = query.strip()
+        if text and text not in normalized:
+            normalized.append(text)
+
+    if not normalized:
+        normalized = list(DEFAULT_NEWS_QUERIES)
+    elif DEFAULT_NEWS_QUERY not in normalized:
+        normalized.insert(0, DEFAULT_NEWS_QUERY)
+
+    return normalized

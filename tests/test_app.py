@@ -8,6 +8,10 @@ client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def stub_external_sources(monkeypatch):
+    monkeypatch.setenv("ALPHAOS_LIVE_REFRESH_ENABLED", "0")
+    app.state.live_market_snapshot = None
+    app.state.live_market_updated_at = None
+    app.state.live_market_refresh_status = {"enabled": False, "status": "idle"}
     monkeypatch.setattr("src.collectors.briefing_inputs.fetch_usd_jpy_rate", lambda: 156.2)
     monkeypatch.setattr("src.collectors.briefing_inputs.fetch_nikkei_change_pct", lambda: 1.2)
     monkeypatch.setattr(
@@ -65,6 +69,7 @@ def test_briefing_endpoint_returns_expected_keys():
     assert "briefing_id" in data
     assert "learning_summary" in data
     assert "decision_ai" in data
+    assert "market_refresh" in data
 
 
 def test_briefing_endpoint_derives_fx_state_from_usd_jpy():
@@ -258,14 +263,27 @@ def test_homepage_returns_html_briefing():
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "AlphaOS Morning Briefing" in response.text
-    assert "Risk Alerts" in response.text
-    assert "Reasons" in response.text
-    assert "Evidence" in response.text
-    assert "Decision AI" in response.text
-    assert "Learning" in response.text
-    assert "Confidence" in response.text
-    assert "Review history" in response.text
+    assert "最有力候補" in response.text
+    assert "自動更新" in response.text
+    assert "自動更新設定" in response.text
+    assert "最終更新" in response.text
+
+
+def test_homepage_allows_refresh_interval_override():
+    response = client.get("/?refresh_interval_seconds=15")
+
+    assert response.status_code == 200
+    assert "15秒ごと" in response.text or 'value="15"' in response.text
+    assert "自動更新設定" in response.text
+    assert "最有力候補" in response.text
+
+
+def test_briefing_allows_refresh_interval_override():
+    response = client.get("/briefing?refresh_interval_seconds=20")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["market_refresh"]["interval_seconds"] == 20
 
 
 def test_homepage_survives_fetch_failures(monkeypatch):
@@ -283,8 +301,9 @@ def test_homepage_survives_fetch_failures(monkeypatch):
     response = client.get("/")
 
     assert response.status_code == 200
-    assert "Market overview is not ready yet." in response.text
-    assert "None" in response.text
+    assert "AlphaOS トップページ" in response.text
+    assert "履歴を見る" in response.text
+    assert "データ品質" in response.text
 
 
 def test_history_endpoint_returns_recent_records(monkeypatch):
@@ -353,9 +372,8 @@ def test_history_view_returns_html(monkeypatch):
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "AlphaOS Briefing Archive" in response.text
-    assert "Review history" not in response.text
-    assert "Back to briefing" in response.text
+    assert "AlphaOS ブリーフィング履歴" in response.text
+    assert "ホームへ戻る" in response.text
     assert "alpha" in response.text
 
 
@@ -486,6 +504,39 @@ def test_candidates_endpoint_includes_learning_summary():
     assert data["learning_summary"]["status"] in {"insufficient", "weak", "moderate", "strong"}
 
 
+def test_candidates_endpoint_exposes_sector_rotation_summary(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.compose_briefing",
+        lambda source, learning_summary=None: {
+            "briefing_id": "brief-1",
+            "market_state": "bullish",
+            "fx_state": "weak yen",
+            "confidence": "high",
+            "risk_alerts": ["Market tone is calm."],
+            "watchlist_status": [
+                {
+                    "symbol": "7203.T",
+                    "name": "Toyota",
+                    "status": "strong",
+                    "change_pct": 2.4,
+                    "volume": 2_000_000,
+                    "sector": "technology",
+                }
+            ],
+            "sector_rotation": {"technology": "strong"},
+            "decision_ai": {"stance": "supportive", "reason": "Constructive consensus."},
+            "evidence": [{"source": "market", "label": "Nikkei", "value": 1.2}],
+        },
+    )
+
+    response = client.get("/candidates?limit=1")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["sector_rotation_summary"]
+    assert any("technology" in item for item in data["sector_rotation_summary"])
+
+
 def test_daytrade_candidates_endpoint_uses_daytrade_mode():
     response = client.get("/daytrade-candidates?limit=2&holdings=7203.T")
 
@@ -516,23 +567,55 @@ def test_candidates_view_returns_html_with_entry_details():
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "AlphaOS Candidates" in response.text
-    assert "Mode" in response.text
+    assert "AlphaOS 候補銘柄" in response.text
+    assert "モード" in response.text
     assert "advisory_only" in response.text
-    assert "Strategy" in response.text
-    assert "Top Candidate" in response.text
-    assert "Why now" in response.text
-    assert "Similar Cases" in response.text
+    assert "戦略" in response.text
+    assert "最有力候補" in response.text
+    assert "なぜ今か" in response.text
+    assert "類似事例" in response.text
     assert "Outcome" in response.text
-    assert "Personal Context" in response.text
-    assert "Opportunity Summary" in response.text
-    assert "Exclusion Breakdown" in response.text
-    assert "Entry reason" in response.text
-    assert "Entry detail" in response.text
-    assert "Counter evidence" in response.text
-    assert "Excluded Candidates" in response.text
+    assert "個人条件" in response.text
+    assert "候補サマリ" in response.text
+    assert "除外内訳" in response.text
+    assert "エントリー理由" in response.text
+    assert "エントリー詳細" in response.text
+    assert "反証" in response.text
+    assert "除外候補" in response.text
     assert "holdings" in response.text
-    assert "Knowledge Graph" in response.text
+    assert "知識グラフ" in response.text
+
+
+def test_candidates_view_shows_sector_rotation_panel(monkeypatch):
+    monkeypatch.setattr(
+        "src.app.compose_briefing",
+        lambda source, learning_summary=None: {
+            "briefing_id": "brief-1",
+            "market_state": "bullish",
+            "fx_state": "weak yen",
+            "confidence": "high",
+            "risk_alerts": ["Market tone is calm."],
+            "watchlist_status": [
+                {
+                    "symbol": "7203.T",
+                    "name": "Toyota",
+                    "status": "strong",
+                    "change_pct": 2.4,
+                    "volume": 2_000_000,
+                    "sector": "technology",
+                }
+            ],
+            "sector_rotation": {"technology": "strong"},
+            "decision_ai": {"stance": "supportive", "reason": "Constructive consensus."},
+            "evidence": [{"source": "market", "label": "Nikkei", "value": 1.2}],
+        },
+    )
+
+    response = client.get("/candidates/view?limit=1")
+
+    assert response.status_code == 200
+    assert "業種ローテーション" in response.text
+    assert "technology: strong" in response.text
 
 
 def test_daytrade_candidates_view_returns_html():
@@ -540,11 +623,11 @@ def test_daytrade_candidates_view_returns_html():
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "AlphaOS Candidates" in response.text
-    assert "Strategy" in response.text
+    assert "AlphaOS 候補銘柄" in response.text
+    assert "戦略" in response.text
     assert "daytrade" in response.text
-    assert "Learning" in response.text
-    assert "Knowledge Graph" in response.text
+    assert "学習" in response.text
+    assert "知識グラフ" in response.text
 
 
 def test_what_if_endpoint_returns_scenarios():
@@ -565,6 +648,14 @@ def test_knowledge_graph_endpoint_returns_nodes_and_edges():
     assert data["nodes"]
     assert data["edges"]
     assert any(node["kind"] == "scenario" for node in data["nodes"])
+
+
+def test_favicon_endpoint_returns_icon():
+    response = client.get("/favicon.ico")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("image/svg+xml")
+    assert "<svg" in response.text
 
 
 def test_replay_compare_view_returns_html(monkeypatch):
@@ -594,8 +685,8 @@ def test_replay_compare_view_returns_html(monkeypatch):
     response = client.get("/replay/compare")
 
     assert response.status_code == 200
-    assert "AlphaOS Replay Comparison" in response.text
-    assert "Similar Cases" in response.text
+    assert "AlphaOS Replay 比較" in response.text
+    assert "類似事例" in response.text
 
 
 def test_backtest_endpoint_scores_payload():
@@ -738,7 +829,7 @@ def test_validate_view_returns_html(monkeypatch):
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
-    assert "AlphaOS Opportunity Validation" in response.text
+    assert "AlphaOS 候補検証" in response.text
     assert "swing" in response.text
-    assert "Win rate" in response.text
-    assert "Walk-forward" in response.text
+    assert "勝率" in response.text
+    assert "ウォークフォワード" in response.text

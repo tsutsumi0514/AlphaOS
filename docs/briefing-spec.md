@@ -17,6 +17,8 @@ This output is a compact support layer, not the final buy-candidate ranking.
 - `evidence`: Structured proof items that support the current view.
 - `data_health`: Optional diagnostic state for external input availability and freshness.
 - `data_warnings`: Optional short warnings when one or more upstream inputs fail.
+- `market_refresh`: Optional live-update metadata for the background refresh loop, including refresh interval and last refresh time.
+- `data_health` may also include collection diagnostics such as watchlist counts, top mover, and the news query that produced the latest item.
 
 ## Agent Decision Contract
 - `agent`: Name of the agent that produced the view.
@@ -60,6 +62,7 @@ This output is a compact support layer, not the final buy-candidate ranking.
 - Keep evidence compact enough for later AI coordination and learning.
 - Use evidence to support future ChairmanAI, RiskAI, and presenter layers.
 - Briefing-facing text should be derived from evidence-backed state whenever possible.
+- The default briefing view may be refreshed automatically in the background while the app is running.
 
 ## Candidate Output Boundary
 - Do not force buy recommendations into `/briefing`.

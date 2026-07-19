@@ -31,6 +31,7 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - `liquidity`: Simple liquidity state used by the candidate filter (`high`, `medium`, `thin`, `unavailable`).
 - `learning_profile`: Light-weight bias derived from learning history for score, confidence, and timing adjustments.
 - `candidate_graph`: Lightweight Knowledge Graph context that helps explain the candidate path.
+- `sector_rotation_summary`: Short sector-rotation context used to explain where the current setup sits.
 
 ## Rules
 - Do not force buy recommendations into `/briefing`.
@@ -47,9 +48,11 @@ This layer sits above the existing briefing stack and does not replace `/briefin
 - Use simple, explainable score components.
 - Break ties with risk first, then evidence strength, then timing confidence.
 - Candidate exclusion should remove low-confidence, thin-liquidity, and low-evidence noise.
+- Low-evidence candidates should be excluded earlier when combined with weak confidence or weak liquidity.
 - Learning should adjust ranking only through a small, explainable bias derived from past outcomes.
 - Learning may nudge ranking slightly via `score_adjustment`, `confidence_adjustment`, and `support_gap`, but it must stay explainable.
 - Graph context should stay lightweight and explanatory, not become a second ranking engine.
+- Sector rotation should be surfaced as short context, not turned into a separate optimizer.
 - Personalization should only nudge ranking and filtering, not override the evidence-first core.
 
 ## Entry Timing

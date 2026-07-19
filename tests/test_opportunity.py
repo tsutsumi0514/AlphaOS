@@ -65,7 +65,9 @@ def test_build_opportunity_candidates_ranks_strong_items_first():
     assert candidates[0]["entry_timing"] == "buy_now"
     assert candidates[0]["entry_detail"] in {"enter_on_strength", "core_entry", "open_now"}
     assert candidates[0]["entry_reason"]
-    assert candidates[0]["candidate_reason"] == candidates[0]["entry_reason"]
+    assert candidates[0]["candidate_reason"]
+    assert candidates[0]["candidate_reason"] != candidates[0]["entry_reason"]
+    assert candidates[0]["candidate_reason"].startswith("7203.T:")
     assert candidates[0]["confidence"] in {"medium", "high"}
     assert isinstance(candidates[0]["counter_evidence"], list)
     assert candidates[0]["liquidity"] == "unavailable"

@@ -76,12 +76,15 @@ def build_knowledge_graph(
         )
 
     if top_candidate is not None:
+        sector = _text(top_candidate.get("sector"))
+        sector_strength = _text(top_candidate.get("sector_strength"))
         nodes.append(
             {
                 "id": f"candidate:{top_candidate['symbol']}",
                 "label": top_candidate["symbol"],
                 "kind": "candidate",
-                "summary": top_candidate.get("entry_reason", "Candidate entry summary."),
+                "summary": top_candidate.get("candidate_reason")
+                or top_candidate.get("entry_reason", "Candidate entry summary."),
             }
         )
         edges.append(
@@ -92,6 +95,23 @@ def build_knowledge_graph(
                 "strength": "high" if top_candidate.get("confidence") == "high" else "medium",
             }
         )
+        if sector:
+            nodes.append(
+                {
+                    "id": f"sector:{sector.lower()}",
+                    "label": sector,
+                    "kind": "sector",
+                    "summary": sector_strength or "Sector context for the top candidate.",
+                }
+            )
+            edges.append(
+                {
+                    "source": "market",
+                    "target": f"sector:{sector.lower()}",
+                    "label": "rotation",
+                    "strength": "high" if sector_strength in {"strong", "supported", "positive", "bullish"} else "medium",
+                }
+            )
 
     for scenario in scenario_report["scenarios"]:
         scenario_id = f"scenario:{scenario['name']}"
